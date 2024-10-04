@@ -11,7 +11,7 @@ Join the G-Earth [Discord server](https://discord.gg/AVkcF8y)
 
 # Execution
 * **Windows:** Double click G-Earth.exe, which will be delivered in the release. Double clicking the .jar file might work as well.
-* **Linux** Execute `sudo java -jar G-Earth.jar` on the command line. You can include the `t` flag to log packets in your terminal
+* **Linux** Execute `java -jar G-Earth.jar` on the command line. You can include the `t` flag to log packets in your terminal (e.g `java -jar G-Earth.jar -t`)
 * **Mac** Follow the [MacOs Installation guide](https://github.com/sirjonasxx/G-Earth/wiki/macOs-Installation-guide) (flash only)
 
 # Features

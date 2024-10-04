@@ -2,6 +2,7 @@ package gearth;
 
 import gearth.misc.AdminValidator;
 import gearth.misc.Cacher;
+import gearth.misc.OSValidator;
 import gearth.misc.UpdateChecker;
 import gearth.misc.listenerpattern.ObservableObject;
 import gearth.ui.GEarthController;
@@ -122,7 +123,8 @@ public class GEarth extends Application {
         primaryStage.show();
         primaryStage.setOnCloseRequest(event -> closeGEarth());
 
-        AdminValidator.validate();
+        if (OSValidator.isWindows())
+            AdminValidator.validate();
         UpdateChecker.checkForUpdates();
 
     }

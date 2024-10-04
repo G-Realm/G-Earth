@@ -128,6 +128,11 @@
                                     <fileset dir="src/main/resources/build/common" includes="**/*"/>
                                     <fileset dir="src/main/resources/build/linux" includes="**/*" excludes=".gitkeep"/>
                                 </copy>
+                                <chmod perm="+x" type="both">
+                                    <fileset file="../Build/Linux/getmem"  />
+                                    <fileset file="../Build/Linux/getpid" />
+                                    <fileset file="../Build/Linux/modhost" />
+                                </chmod>
                                 <copy todir="../Build/Windows_32bit/">
                                     <fileset dir="target/bin" includes="**/*"/>
                                     <fileset dir="src/main/resources/build/common" includes="**/*"/>
