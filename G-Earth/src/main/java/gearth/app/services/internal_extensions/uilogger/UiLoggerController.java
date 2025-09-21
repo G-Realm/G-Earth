@@ -216,6 +216,9 @@ public class UiLoggerController implements Initializable {
     }
 
     public void appendMessage(HPacket packet, int types) {
+        if (packet.headerId() == -1) {
+            return;
+        }
         boolean isBlocked = (types & PacketLogger.MESSAGE_TYPE.BLOCKED.getValue()) != 0;
         boolean isReplaced = (types & PacketLogger.MESSAGE_TYPE.REPLACED.getValue()) != 0;
         boolean isIncoming = (types & PacketLogger.MESSAGE_TYPE.INCOMING.getValue()) != 0;
