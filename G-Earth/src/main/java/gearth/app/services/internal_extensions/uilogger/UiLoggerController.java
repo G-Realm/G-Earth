@@ -69,10 +69,9 @@ public class UiLoggerController implements Initializable {
     public Label lblFiltered;
     public CheckMenuItem chkTimestamp;
 
-    public RadioMenuItem chkReprLegacy;
-    public RadioMenuItem chkReprHex;
-    public RadioMenuItem chkReprRawHex;
-    public RadioMenuItem chkReprNone;
+    public CheckMenuItem chkReprLegacy;
+    public CheckMenuItem chkReprHex;
+    public CheckMenuItem chkReprRawHex;
     public MenuItem menuItem_clear, menuItem_exportAll;
 
     private Map<Integer, LinkedList<Long>> filterTimestamps = new HashMap<>();
@@ -125,11 +124,19 @@ public class UiLoggerController implements Initializable {
 
     private void loadAllMenuItems() {
         List<Object> selectedMenuItems = Cacher.getList(LOGGER_SETTINGS_CACHE);
-        if (selectedMenuItems != null) {
-            for (int i = 0; i < selectedMenuItems.size(); i++) {
-                boolean isSelected = (boolean) selectedMenuItems.get(i);
-                setSelected(allMenuItems.get(i), isSelected);
-            }
+
+        if (selectedMenuItems == null) {
+            return;
+        }
+
+        if (selectedMenuItems.size() != allMenuItems.size()) {
+            saveAllMenuItems();
+            return;
+        }
+
+        for (int i = 0; i < selectedMenuItems.size(); i++) {
+            boolean isSelected = (boolean) selectedMenuItems.get(i);
+            setSelected(allMenuItems.get(i), isSelected);
         }
     }
 
@@ -140,7 +147,7 @@ public class UiLoggerController implements Initializable {
                 chkSkipBigPackets, chkMessageName, chkMessageHash, chkMessageId,
                 chkOpenOnConnect, chkResetOnConnect, chkHideOnDisconnect, chkResetOnDisconnect,
                 chkAntiSpam_none, chkAntiSpam_low, chkAntiSpam_medium, chkAntiSpam_high, chkAntiSpam_ultra,
-                chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex, chkReprNone
+                chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex
         ));
         loadAllMenuItems();
 
@@ -269,32 +276,42 @@ public class UiLoggerController implements Initializable {
         if (isBlocked) elements.add(new Element(String.format("[%s]\n", LanguageBundle.get("ext.logger.element.blocked")), "blocked"));
         else if (isReplaced) elements.add(new Element(String.format("[%s]\n", LanguageBundle.get("ext.logger.element.replaced")), "replaced"));
 
-        if (!chkReprNone.isSelected()) {
-            boolean isSkipped = chkSkipBigPackets.isSelected() && (packet.length() > 4000 || (packet.length() > 1000 && chkReprHex.isSelected()));
-            String packetRepresentation = chkReprHex.isSelected() ?
-                    Hexdump.hexdump(packet.toBytes()) :
-                    (chkReprRawHex.isSelected() ? Hex.toHexString(packet.toBytes()) : packet.toString());
+        boolean reprLegacy = chkReprLegacy.isSelected();
+        boolean reprHex = chkReprHex.isSelected();
+        boolean reprRawHex = chkReprRawHex.isSelected();
 
-            String packetType = isIncoming ? "incoming" : "outgoing";
-            String type = isIncoming ?
-                    LanguageBundle.get("ext.logger.element.direction.incoming") :
-                    LanguageBundle.get("ext.logger.element.direction.outgoing");
+        if (reprLegacy || reprHex || reprRawHex) {
+            boolean isSkipped = chkSkipBigPackets.isSelected() && (packet.length() > 4000 || (packet.length() > 1000 && reprHex));
+            if (isSkipped) {
+                elements.add(new Element(String.format("<%s>", LanguageBundle.get("ext.logger.element.skipped")), "skipped"));
+            } else {
+                String packetType = isIncoming ? "incoming" : "outgoing";
+                String type = isIncoming ?
+                        LanguageBundle.get("ext.logger.element.direction.incoming") :
+                        LanguageBundle.get("ext.logger.element.direction.outgoing");
 
-            if (!chkReprHex.isSelected()) {
                 elements.add(new Element(String.format("%s[", type), packetType));
                 elements.add(new Element(String.valueOf(packet.headerId()), ""));
                 elements.add(new Element("]", packetType));
 
                 elements.add(new Element(" -> ", ""));
+
+                if (reprLegacy) {
+                    elements.add(new Element(packet.toString(), packetType));
+                    elements.add(new Element("\n", ""));
+                }
+
+                if (reprHex) {
+                    elements.add(new Element(Hexdump.hexdump(packet.toBytes()), String.format("%sHex", packetType)));
+                    elements.add(new Element("\n", ""));
+                }
+
+                if (reprRawHex) {
+                    elements.add(new Element(Hex.toHexString(packet.toBytes()), String.format("%sHex", packetType)));
+                    elements.add(new Element("\n", ""));
+                }
             }
-
-            if (isSkipped) {
-                elements.add(new Element(String.format("<%s>", LanguageBundle.get("ext.logger.element.skipped")), "skipped"));
-            } else
-                elements.add(new Element(packetRepresentation, String.format(chkReprHex.isSelected() ? "%sHex": "%s", packetType)));
-            elements.add(new Element("\n", ""));
         }
-
 
         if (packet.length() <= 2000) {
             try {
@@ -457,7 +474,6 @@ public class UiLoggerController implements Initializable {
         chkReprLegacy.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep.legacy"));
         chkReprHex.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep.hexdump"));
         chkReprRawHex.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep.rawhex"));
-        chkReprNone.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep.none"));
 
         menu_packets_details_message.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.message"));
         chkMessageHash.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.message.hash"));

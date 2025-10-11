@@ -2,7 +2,6 @@ package gearth.app.protocol.memory;
 
 import gearth.app.GEarth;
 import gearth.app.protocol.HConnection;
-import gearth.protocol.HMessage;
 import gearth.app.protocol.crypto.RC4;
 import gearth.app.protocol.crypto.RC4Shockwave;
 import gearth.app.protocol.memory.habboclient.HabboClient;
@@ -16,6 +15,9 @@ import gearth.app.protocol.packethandler.shockwave.ShockwavePacketOutgoingHandle
 import gearth.app.protocol.packethandler.shockwave.buffers.ShockwaveOutBuffer;
 import gearth.app.ui.titlebar.TitleBarAlert;
 import gearth.app.ui.translations.LanguageBundle;
+import gearth.protocol.HMessage;
+import gearth.protocol.HPacket;
+import gearth.protocol.HPacketFormat;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -214,10 +216,36 @@ public class Rc4Obtainer {
         try {
             final byte[][] packets = buffer.receive();
 
-            if (packets.length == 3 && buffer.isEmpty()) {
-                packetHandler.setRc4(rc4);
-                return true;
+            if (!buffer.isEmpty()) {
+                return false;
             }
+
+            if (packets.length < 3) {
+                return false;
+            }
+
+            for (int i = 0; i < 3; i++) {
+                final HPacket packet = HPacketFormat.WEDGIE_OUTGOING.createPacket(rc4Test.decipher(packets[i]));
+                final int headerId = packet.headerId();
+
+                // VERSIONCHECK
+                if (i == 0 && headerId != 5) {
+                    return false;
+                }
+
+                // UNIQUEID
+                if (i == 1 && headerId != 6) {
+                    return false;
+                }
+
+                // GET_SESSION_PARAMETERS
+                if (i == 2 && headerId != 181) {
+                    return false;
+                }
+            }
+
+            packetHandler.setRc4(rc4);
+            return true;
         } catch (IllegalArgumentException e) {
             // ignore
         }
