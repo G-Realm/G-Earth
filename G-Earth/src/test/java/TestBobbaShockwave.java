@@ -43,4 +43,17 @@ public class TestBobbaShockwave {
         assertArrayEquals(Hex.decode("8feafcdedc1a1904acd4155e"), key.getNextNonce());
         assertArrayEquals(Hex.decode("8feafcdedd1a1904acd4155e"), key.getNextNonce());
     }
+
+    @Test
+    public void testNonceWrapAround() {
+        final BobbaChaChaKey key = new BobbaChaChaKey(
+                Hex.decode("1b848a223d407b38c4e8ce307dc5cde45e7a8a4abb5f4b63cacc3ca93e53fe15"),
+                Hex.decode("f2199ffbfe8c1a6383c8cfdb")
+        );
+
+        assertArrayEquals(Hex.decode("f2199ffbfe8c1a6383c8cfdb"), key.getNextNonce());
+        assertArrayEquals(Hex.decode("f2199ffbff8c1a6383c8cfdb"), key.getNextNonce());
+        assertArrayEquals(Hex.decode("f2199ffb008d1a6383c8cfdb"), key.getNextNonce());
+        assertArrayEquals(Hex.decode("f2199ffb018d1a6383c8cfdb"), key.getNextNonce());
+    }
 }

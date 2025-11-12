@@ -159,7 +159,7 @@ public class ShockwavePacketModifier {
         final byte[] newPacketLen = Base64Encoding.encode(packet.length, 3);
         byte[] header = new byte[4];
 
-        header[0] = (byte) ThreadLocalRandom.current().nextInt(0, 127);
+        header[0] = (byte) ThreadLocalRandom.current().nextInt(1, 127);
         header[1] = newPacketLen[0];
         header[2] = newPacketLen[1];
         header[3] = newPacketLen[2];
