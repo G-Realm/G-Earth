@@ -1,45 +1,53 @@
 package gearth.app.protocol.packethandler.shockwave;
 
+import gearth.app.protocol.TrafficListener;
+import gearth.app.protocol.packethandler.PacketHandler;
+import gearth.app.services.extension_handler.ExtensionHandler;
 import gearth.misc.listenerpattern.Observable;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import gearth.protocol.HPacketFormat;
-import gearth.app.protocol.TrafficListener;
-import gearth.app.protocol.crypto.RC4Cipher;
-import gearth.app.protocol.packethandler.EncryptedPacketHandler;
-import gearth.app.protocol.packethandler.PayloadBuffer;
-import gearth.app.services.extension_handler.ExtensionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
 
-public abstract class ShockwavePacketHandler extends EncryptedPacketHandler {
+public class ShockwavePacketHandler extends PacketHandler {
 
     protected static final Logger logger = LoggerFactory.getLogger(ShockwavePacketHandler.class);
 
+    private final ShockwavePacketModifier packetModifier;
     private final HMessage.Direction direction;
     private final HPacketFormat format;
-    private final PayloadBuffer payloadBuffer;
     private final Object flushLock;
 
     protected final OutputStream outputStream;
 
-    ShockwavePacketHandler(HMessage.Direction direction, PayloadBuffer payloadBuffer, OutputStream outputStream, ExtensionHandler extensionHandler, Observable<TrafficListener>[] trafficObservables) {
-        super(extensionHandler, trafficObservables, direction);
+    public ShockwavePacketHandler(ShockwavePacketModifier packetModifier, HMessage.Direction direction, OutputStream outputStream, ExtensionHandler extensionHandler, Observable<TrafficListener>[] trafficObservables) {
+        super(extensionHandler, trafficObservables);
+        this.packetModifier = packetModifier;
         this.direction = direction;
         this.format = direction == HMessage.Direction.TOSERVER ? HPacketFormat.WEDGIE_OUTGOING : HPacketFormat.WEDGIE_INCOMING;
-        this.payloadBuffer = payloadBuffer;
         this.outputStream = outputStream;
         this.flushLock = new Object();
     }
 
     @Override
     public boolean sendToStream(byte[] buffer) {
+        final byte[] message;
+
+        try {
+            message = this.direction == HMessage.Direction.TOSERVER
+                    ? this.packetModifier.gearthToServer(buffer)
+                    : this.packetModifier.gearthToClient(buffer);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to modify gearthToClient Shockwave packet.", e);
+        }
+
         synchronized (sendLock) {
             try {
-                outputStream.write(buffer);
+                outputStream.write(message);
                 return true;
             } catch (IOException e) {
                 logger.error("Failed to send packet to stream", e);
@@ -50,48 +58,32 @@ public abstract class ShockwavePacketHandler extends EncryptedPacketHandler {
 
     @Override
     public void act(byte[] buffer) throws IOException {
-        super.act(buffer);
+        final byte[][] messages;
 
-        if (!isBlocked()) {
-            flush();
+        try {
+            messages = this.direction == HMessage.Direction.TOSERVER
+                    ? this.packetModifier.clientToGearth(buffer)
+                    : this.packetModifier.serverToGearth(buffer);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to modify Shockwave packets.", e);
+        }
+
+        for (byte[] message : messages) {
+            handle(message);
         }
     }
 
-    @Override
-    protected void writeOut(byte[] buffer) throws IOException {
-        synchronized (sendLock) {
-            outputStream.write(buffer);
-        }
-    }
-
-    @Override
-    protected void writeBuffer(byte[] buffer) {
-        payloadBuffer.push(buffer);
-    }
-
-    @Override
-    public void setRc4(RC4Cipher rc4) {
-        payloadBuffer.setCipher(rc4);
-        super.setRc4(rc4);
-    }
-
-    public void flush() throws IOException {
+    private void handle(byte[] messageBytes) {
         synchronized (flushLock) {
-            final byte[][] packets = payloadBuffer.receive();
+            final HPacket packet = format.createPacket(messageBytes);
 
-            for (final byte[] rawPacket : packets) {
-                final HPacket packet = isEncryptedStream()
-                        ? format.createPacket(decrypt(rawPacket))
-                        : format.createPacket(rawPacket);
+            packet.setIdentifierDirection(direction);
 
-                packet.setIdentifierDirection(direction);
+            final HMessage message = new HMessage(packet, direction, currentIndex);
 
-                final HMessage message = new HMessage(packet, direction, currentIndex);
+            awaitListeners(message, x -> sendToStream(x.getPacket().toBytes()));
 
-                awaitListeners(message, x -> sendToStream(x.getPacket().toBytes()));
-
-                currentIndex++;
-            }
+            currentIndex++;
         }
     }
 }

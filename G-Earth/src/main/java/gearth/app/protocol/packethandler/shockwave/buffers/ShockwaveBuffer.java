@@ -1,17 +1,11 @@
 package gearth.app.protocol.packethandler.shockwave.buffers;
 
-import gearth.app.protocol.crypto.RC4Cipher;
 import gearth.app.protocol.packethandler.PayloadBuffer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class ShockwaveInBuffer extends PayloadBuffer {
-
-    @Override
-    public void setCipher(RC4Cipher cipher) {
-        // We don't need to decrypt incoming packet headers, for now.
-    }
+public class ShockwaveBuffer extends PayloadBuffer {
 
     @Override
     public byte[][] receive() {
@@ -36,4 +30,5 @@ public class ShockwaveInBuffer extends PayloadBuffer {
 
         return packets.toArray(new byte[0][]);
     }
+
 }

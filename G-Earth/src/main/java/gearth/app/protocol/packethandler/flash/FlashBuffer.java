@@ -1,18 +1,12 @@
 package gearth.app.protocol.packethandler.flash;
 
-import gearth.protocol.HPacket;
-import gearth.app.protocol.crypto.RC4Cipher;
 import gearth.app.protocol.packethandler.PayloadBuffer;
+import gearth.protocol.HPacket;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class FlashBuffer extends PayloadBuffer {
-
-    @Override
-    public void setCipher(RC4Cipher cipher) {
-        // not needed
-    }
 
     public byte[][] receive() {
         if (buffer.length < 6) return new byte[0][];

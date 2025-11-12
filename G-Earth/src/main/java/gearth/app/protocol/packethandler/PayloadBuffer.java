@@ -1,7 +1,5 @@
 package gearth.app.protocol.packethandler;
 
-import gearth.app.protocol.crypto.RC4Cipher;
-
 public abstract class PayloadBuffer {
 
     protected byte[] buffer;
@@ -10,10 +8,9 @@ public abstract class PayloadBuffer {
         this.buffer = new byte[0];
     }
 
-    /**
-     * Make sure to call deepCopy on the cipher if you use it.
-     */
-    public abstract void setCipher(RC4Cipher cipher);
+    public byte[] getBuffer() {
+        return buffer;
+    }
 
     public void push(byte[] data) {
         buffer = buffer.length == 0 ? data.clone() : ByteArrayUtils.combineByteArrays(buffer, data);

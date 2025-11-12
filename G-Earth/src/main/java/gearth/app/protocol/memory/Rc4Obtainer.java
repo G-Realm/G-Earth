@@ -3,7 +3,6 @@ package gearth.app.protocol.memory;
 import gearth.app.GEarth;
 import gearth.app.protocol.HConnection;
 import gearth.app.protocol.crypto.RC4;
-import gearth.app.protocol.crypto.RC4Shockwave;
 import gearth.app.protocol.memory.habboclient.HabboClient;
 import gearth.app.protocol.memory.habboclient.HabboClientFactory;
 import gearth.app.protocol.packethandler.EncryptedPacketHandler;
@@ -11,13 +10,10 @@ import gearth.app.protocol.packethandler.PayloadBuffer;
 import gearth.app.protocol.packethandler.flash.BufferChangeListener;
 import gearth.app.protocol.packethandler.flash.FlashBuffer;
 import gearth.app.protocol.packethandler.flash.FlashPacketHandler;
-import gearth.app.protocol.packethandler.shockwave.ShockwavePacketOutgoingHandler;
-import gearth.app.protocol.packethandler.shockwave.buffers.ShockwaveOutBuffer;
+import gearth.app.protocol.packethandler.shockwave.buffers.ShockwaveProperBuffer;
 import gearth.app.ui.titlebar.TitleBarAlert;
 import gearth.app.ui.translations.LanguageBundle;
 import gearth.protocol.HMessage;
-import gearth.protocol.HPacket;
-import gearth.protocol.HPacketFormat;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -131,7 +127,7 @@ public class Rc4Obtainer {
 
         // Copy buffer.
         final int encBufferSize = packetHandler.getEncryptedBuffer().size();
-        if (encBufferSize < ShockwaveOutBuffer.PACKET_SIZE_MIN_ENCRYPTED) {
+        if (encBufferSize < ShockwaveProperBuffer.PACKET_SIZE_MIN_ENCRYPTED) {
             return false;
         }
 
@@ -154,100 +150,6 @@ public class Rc4Obtainer {
                     return true;
                 }
             }
-        } else if (packetHandler instanceof ShockwavePacketOutgoingHandler) {
-            // Fast-path.
-            for (byte[] possible : potentialRC4tables) {
-                if (bruteShockwaveHeaderFast(packetHandler, encBuffer, possible)) {
-                    return true;
-                }
-            }
-
-            // Slow-path.
-            for (byte[] possible : potentialRC4tables) {
-                if (bruteShockwaveHeaderSlow(packetHandler, encBuffer, possible)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private boolean bruteShockwaveHeaderFast(EncryptedPacketHandler packetHandler, byte[] encBuffer, byte[] tableState) {
-        // Table state Q starts at 128 after premixing.
-        final int EstimatedQ = 128;
-
-        for (int j = 0; j < 256; j++) {
-            if (bruteShockwaveHeader(packetHandler, encBuffer, tableState, EstimatedQ, j)) {
-                logger.debug("Brute forced shockwave with fast path");
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boolean bruteShockwaveHeaderSlow(EncryptedPacketHandler packetHandler, byte[] encBuffer, byte[] tableState) {
-        for (int q = 0; q < 256; q++) {
-            for (int j = 0; j < 256; j++) {
-                if (bruteShockwaveHeader(packetHandler, encBuffer, tableState, q, j)) {
-                    logger.debug("Brute forced shockwave with slow path");
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private boolean bruteShockwaveHeader(EncryptedPacketHandler packetHandler, byte[] encBuffer, byte[] tableState, int q, int j) {
-        final byte[] tableStateCopy = Arrays.copyOf(tableState, tableState.length);
-        final RC4Shockwave rc4 = new RC4Shockwave(tableStateCopy, q, j);
-
-        final byte[] encDataCopy = Arrays.copyOf(encBuffer, encBuffer.length);
-        final RC4Shockwave rc4Test = rc4.deepCopy();
-
-        // Attempt to exhaust buffer.
-        final ShockwaveOutBuffer buffer = new ShockwaveOutBuffer();
-
-        buffer.setCipher(rc4Test);
-        buffer.push(encDataCopy);
-
-        try {
-            final byte[][] packets = buffer.receive();
-
-            if (!buffer.isEmpty()) {
-                return false;
-            }
-
-            if (packets.length < 3) {
-                return false;
-            }
-
-            for (int i = 0; i < 3; i++) {
-                final HPacket packet = HPacketFormat.WEDGIE_OUTGOING.createPacket(rc4Test.decipher(packets[i]));
-                final int headerId = packet.headerId();
-
-                // VERSIONCHECK
-                if (i == 0 && headerId != 5) {
-                    return false;
-                }
-
-                // UNIQUEID
-                if (i == 1 && headerId != 6) {
-                    return false;
-                }
-
-                // GET_SESSION_PARAMETERS
-                if (i == 2 && headerId != 181) {
-                    return false;
-                }
-            }
-
-            packetHandler.setRc4(rc4);
-            return true;
-        } catch (IllegalArgumentException e) {
-            // ignore
         }
 
         return false;

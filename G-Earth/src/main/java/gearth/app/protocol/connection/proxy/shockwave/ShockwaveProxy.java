@@ -1,7 +1,6 @@
 package gearth.app.protocol.connection.proxy.shockwave;
 
 import gearth.app.protocol.HConnection;
-import gearth.protocol.connection.HClient;
 import gearth.app.protocol.connection.HProxy;
 import gearth.app.protocol.connection.HProxySetter;
 import gearth.app.protocol.connection.HState;
@@ -9,10 +8,11 @@ import gearth.app.protocol.connection.HStateSetter;
 import gearth.app.protocol.connection.proxy.ProxyProvider;
 import gearth.app.protocol.interceptor.ConnectionInterceptor;
 import gearth.app.protocol.interceptor.ConnectionInterceptorCallbacks;
-import gearth.app.protocol.memory.Rc4Obtainer;
 import gearth.app.protocol.packethandler.PacketHandler;
-import gearth.app.protocol.packethandler.shockwave.ShockwavePacketIncomingHandler;
-import gearth.app.protocol.packethandler.shockwave.ShockwavePacketOutgoingHandler;
+import gearth.app.protocol.packethandler.shockwave.ShockwavePacketHandler;
+import gearth.app.protocol.packethandler.shockwave.ShockwavePacketModifier;
+import gearth.protocol.HMessage;
+import gearth.protocol.connection.HClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,12 +90,10 @@ public class ShockwaveProxy implements ProxyProvider, ConnectionInterceptorCallb
 
         final Semaphore abort = new Semaphore(0);
 
-        final ShockwavePacketOutgoingHandler outgoingHandler = new ShockwavePacketOutgoingHandler(server.getOutputStream(), hConnection.getExtensionHandler(), hConnection.getTrafficObservables());
-        final ShockwavePacketIncomingHandler incomingHandler = new ShockwavePacketIncomingHandler(client.getOutputStream(), hConnection.getExtensionHandler(), hConnection.getTrafficObservables(), outgoingHandler);
+        final ShockwavePacketModifier packetModifier = new ShockwavePacketModifier();
+        final ShockwavePacketHandler outgoingHandler = new ShockwavePacketHandler(packetModifier, HMessage.Direction.TOSERVER, server.getOutputStream(), hConnection.getExtensionHandler(), hConnection.getTrafficObservables());
+        final ShockwavePacketHandler incomingHandler = new ShockwavePacketHandler(packetModifier, HMessage.Direction.TOCLIENT, client.getOutputStream(), hConnection.getExtensionHandler(), hConnection.getTrafficObservables());
 
-        final Rc4Obtainer rc4Obtainer = new Rc4Obtainer(hConnection);
-
-        rc4Obtainer.setFlashPacketHandlers(outgoingHandler, incomingHandler);
         // Hotel version set to "latest" so we always fetch the latest available.
         proxy.verifyProxy(incomingHandler, outgoingHandler, "latest", "SHOCKWAVE");
         hProxySetter.setProxy(proxy);
