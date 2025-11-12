@@ -22,8 +22,9 @@ public class ShockwavePacketModifier {
     private final BobbaCrypto client;
     private final BobbaCrypto server;
 
-    private PayloadBuffer clientBuffer;
-    private PayloadBuffer serverBuffer;
+    private final ShockwaveProperBuffer clientBuffer;
+    private final ShockwaveProperBuffer serverBuffer;
+    private final PayloadBuffer serverBufferPlain;
 
     private boolean clientCryptoEnabled;
     private boolean serverCryptoEnabled;
@@ -33,7 +34,8 @@ public class ShockwavePacketModifier {
         this.clientBuffer = new ShockwaveProperBuffer();
 
         this.server = new BobbaCrypto();
-        this.serverBuffer = new ShockwaveBuffer();
+        this.serverBuffer = new ShockwaveProperBuffer();
+        this.serverBufferPlain = new ShockwaveBuffer();
     }
 
     private void enableClientCrypto() {
@@ -41,7 +43,7 @@ public class ShockwavePacketModifier {
             throw new IllegalStateException("Cannot enable client crypto without shared key.");
         }
 
-        this.clientBuffer = this.swapBuffer(this.clientBuffer, this.client.getC2sHeader());
+        this.setBufferCipher(this.clientBuffer, this.client.getC2sHeader());
         this.clientCryptoEnabled = true;
     }
 
@@ -50,20 +52,15 @@ public class ShockwavePacketModifier {
             throw new IllegalStateException("Cannot enable server crypto without shared key.");
         }
 
-        this.serverBuffer = this.swapBuffer(this.serverBuffer, this.server.getS2cHeader());
+        this.setBufferCipher(this.serverBuffer, this.server.getS2cHeader());
         this.serverCryptoEnabled = true;
     }
 
-    private ShockwaveProperBuffer swapBuffer(final PayloadBuffer oldBuffer, final BobbaChaChaKey key) {
-        final ShockwaveProperBuffer newBuffer = new ShockwaveProperBuffer();
-
-        newBuffer.push(oldBuffer.getBuffer());
-        newBuffer.setCipher((data, offset, length) -> {
+    private void setBufferCipher(final ShockwaveProperBuffer buffer, final BobbaChaChaKey key) {
+        buffer.setCipher((data, offset, length) -> {
             final byte[] header = Base64Encoding.decode(data, offset, length);
             return BobbaCrypto.applyChaCha(header, 0, header.length, key);
         });
-
-        return newBuffer;
     }
 
     /**
@@ -76,7 +73,7 @@ public class ShockwavePacketModifier {
         final byte[][] packets = this.clientBuffer.receive();
 
         if (this.clientCryptoEnabled) {
-            return decryptPackets(packets, this.client.getC2sData());
+            return decryptChunks(packets, this.client.getC2sData());
         }
 
         for (byte[] packet : packets) {
@@ -92,7 +89,7 @@ public class ShockwavePacketModifier {
 
     public byte[] gearthToServer(byte[] data) {
         if (this.serverCryptoEnabled) {
-            return encryptPacket(data, this.server.getC2sHeader(), this.server.getC2sData());
+            return encryptChunk(data, this.server.getC2sHeader(), this.server.getC2sData());
         }
 
         final HPacket message = HPacketFormat.WEDGIE_OUTGOING.createPacket(data);
@@ -111,13 +108,21 @@ public class ShockwavePacketModifier {
     }
 
     public byte[][] serverToGearth(byte[] data) {
-        this.serverBuffer.push(data);
-
-        final byte[][] packets = this.serverBuffer.receive();
-
         if (this.serverCryptoEnabled) {
-            return decryptPackets(packets, this.server.getS2cData());
+            this.serverBuffer.push(data);
+
+            final byte[][] chunks = decryptChunks(this.serverBuffer.receive(), this.server.getS2cData());
+
+            for (byte[] chunk : chunks) {
+                this.serverBufferPlain.push(chunk);
+            }
+
+            return this.serverBufferPlain.receive();
         }
+
+        this.serverBufferPlain.push(data);
+
+        final byte[][] packets = this.serverBufferPlain.receive();
 
         for (byte[] packet : packets) {
             final HPacket message = HPacketFormat.WEDGIE_INCOMING.createPacket(packet);
@@ -133,7 +138,9 @@ public class ShockwavePacketModifier {
 
     public byte[] gearthToClient(byte[] data) {
         if (this.clientCryptoEnabled) {
-            return encryptPacket(data, this.client.getS2cHeader(), this.client.getS2cData());
+            data = ByteArrayUtils.combineByteArrays(data, PACKET_END);
+
+            return encryptChunk(data, this.client.getS2cHeader(), this.client.getS2cData());
         }
 
         final HPacket message = HPacketFormat.WEDGIE_INCOMING.createPacket(data);
@@ -150,7 +157,7 @@ public class ShockwavePacketModifier {
         return ByteArrayUtils.combineByteArrays(data, PACKET_END);
     }
 
-    private static byte[] encryptPacket(byte[] packet, BobbaChaChaKey headerKey, BobbaChaChaKey dataKey) {
+    private static byte[] encryptChunk(byte[] packet, BobbaChaChaKey headerKey, BobbaChaChaKey dataKey) {
         // Encrypt data.
         packet = BobbaCrypto.applyChaCha(packet, 0, packet.length, dataKey);
         packet = Base64Encoding.encode(packet, 0, packet.length);
@@ -171,7 +178,7 @@ public class ShockwavePacketModifier {
         return ByteArrayUtils.combineByteArrays(header, packet);
     }
 
-    private static byte[][] decryptPackets(byte[][] packets, BobbaChaChaKey key) {
+    private static byte[][] decryptChunks(byte[][] packets, BobbaChaChaKey key) {
         final byte[][] decryptedPackets = new byte[packets.length][];
 
         for (int i = 0; i < packets.length; i++) {
