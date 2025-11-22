@@ -42,7 +42,7 @@ public abstract class RemotePacketInfoProvider extends PacketInfoProvider {
 
             if (response != null) {
                 Cacher.updateCache(response, getCacheName());
-            } else {
+            } else if (!cacheFile.exists()) {
                 return null;
             }
         } catch (Exception e) {
