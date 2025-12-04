@@ -122,6 +122,7 @@ public class Rc4Obtainer {
         logger.info("Attempting to brute force RC4 table");
 
         if (potentialRC4tables == null || potentialRC4tables.isEmpty()) {
+            logger.debug("No RC4 tables available");
             return false;
         }
 
