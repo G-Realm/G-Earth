@@ -23,7 +23,7 @@ public class HabboSK extends NitroHotel {
 
     public HabboSK() {
         super("habbosk.us",
-                Collections.singletonList("wss://ws.habbosk.us/ws"),
+                Collections.singletonList("wss://game-ws.habbosk.us/ws"),
                 Collections.emptyList());
     }
 
