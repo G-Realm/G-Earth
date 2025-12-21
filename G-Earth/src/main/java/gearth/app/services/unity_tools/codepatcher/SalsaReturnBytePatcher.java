@@ -56,24 +56,27 @@ public class SalsaReturnBytePatcher extends StreamReplacement {
         // Check function size.
         final List<Instr> instrs = code.getExpression().getInstructions();
 
-        if (instrs.size() != 22) {
+        if (instrs.size() != 21 && instrs.size() != 22) {
             return false;
         }
 
-        // Instruction 7 is a block.
-        final Instr instrEight = instrs.get(8);
+        // Block is at index 7 or 8 depending on function size.
+        final int blockIdx = (instrs.size() == 21) ? 7 : 8;
+        final Instr blockInstr = instrs.get(blockIdx);
 
-        if (instrEight.getInstrType() != InstrType.BLOCK) {
+        if (blockInstr.getInstrType() != InstrType.BLOCK) {
             return false;
         }
 
-        final BlockInstr block = (BlockInstr) instrEight;
-        final List<Instr> blockInstr = block.getBlockInstructions();
+        final BlockInstr block = (BlockInstr) blockInstr;
+        final List<Instr> blockInstrs = block.getBlockInstructions();
 
-        if (blockInstr.get(blockInstr.size() - 2).getInstrType() != InstrType.I32_XOR) {
-            return false;
+        for (int i = Math.max(0, blockInstrs.size() - 5); i < blockInstrs.size(); i++) {
+            if (blockInstrs.get(i).getInstrType() == InstrType.I32_XOR) {
+                return true;
+            }
         }
 
-        return true;
+        return false;
     }
 }
