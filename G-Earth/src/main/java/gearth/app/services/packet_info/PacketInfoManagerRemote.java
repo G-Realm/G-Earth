@@ -2,7 +2,6 @@ package gearth.app.services.packet_info;
 
 import gearth.app.services.packet_info.providers.RemotePacketInfoProvider;
 import gearth.app.services.packet_info.providers.implementations.GEarthUnityPacketInfoProvider;
-import gearth.app.services.packet_info.providers.implementations.HarblePacketInfoProvider;
 import gearth.app.services.packet_info.providers.implementations.SulekPacketInfoProvider;
 import gearth.protocol.connection.HClient;
 import gearth.services.packet_info.PacketInfo;
@@ -29,9 +28,9 @@ public class PacketInfoManagerRemote {
         } else if (clientType == HClient.FLASH || clientType == HClient.NITRO || clientType == HClient.SHOCKWAVE) {
             try {
                 List<RemotePacketInfoProvider> providers = new ArrayList<>();
-                if (clientType != HClient.SHOCKWAVE) {
-                    providers.add(new HarblePacketInfoProvider(hotelversion));
-                }
+                //if (clientType != HClient.SHOCKWAVE) {
+                //    providers.add(new HarblePacketInfoProvider(hotelversion));
+                //}
                 providers.add(new SulekPacketInfoProvider(clientType, hotelversion));
 
                 Semaphore blockUntilComplete = new Semaphore(providers.size());
