@@ -6,6 +6,7 @@ import com.github.monkeywie.proxyee.intercept.HttpProxyInterceptPipeline;
 import com.github.monkeywie.proxyee.intercept.common.FullResponseIntercept;
 import gearth.protocol.HPacket;
 import gearth.protocol.HPacketFormat;
+import gearth.app.protocol.connection.proxy.nitro.anubis.AnubisBridgeServer;
 import gearth.app.protocol.connection.proxy.nitro.websocket.NitroWebsocketCallback;
 import gearth.app.protocol.connection.proxy.nitro.websocket.NitroWebsocketProxy;
 import gearth.app.services.nitro.NitroHotelManager;
@@ -13,12 +14,15 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.charset.StandardCharsets;
 
 public class NitroHttpProxyIntercept extends HttpProxyInterceptInitializer {
 
@@ -29,6 +33,33 @@ public class NitroHttpProxyIntercept extends HttpProxyInterceptInitializer {
      */
     private static final int DEFAULT_MAX_CONTENT_LENGTH = 1024 * 1024 * 100;
     private static final int CLIENT_HELLO_PACKET_ID = 4000;
+    private static final String ANUBIS_HOST = "anubisrp.com";
+
+    private static final String ANUBIS_BRIDGE_SCRIPT =
+            "<script>" +
+            "(function(){" +
+            "var BP=" + AnubisBridgeServer.PORT + ";" +
+            "var RS='wss://websocket.habbo.network:6969';" +
+            "document.cookie='anubis.webs.url=ws://127.0.0.1:'+BP+'/client;path=/';" +
+            "if(window.self===window.top){" +
+            "var r=null,b=null,q=[],on=false;" +
+            "function go(){" +
+            "if(on)return;on=true;" +
+            "r=new WebSocket(RS);r.binaryType='arraybuffer';" +
+            "r.onopen=function(){" +
+            "b=new WebSocket('ws://127.0.0.1:'+BP+'/bridge');b.binaryType='arraybuffer';" +
+            "b.onopen=function(){while(q.length)b.send(q.shift());};" +
+            "b.onmessage=function(e){if(r&&r.readyState===1)r.send(e.data);};" +
+            "b.onclose=function(){if(r&&r.readyState===1)r.close();r=null;b=null;q=[];on=false;};" +
+            "};" +
+            "r.onmessage=function(e){if(b&&b.readyState===1)b.send(e.data);else q.push(e.data);};" +
+            "r.onclose=function(){if(b&&b.readyState===1)b.close();r=null;b=null;q=[];on=false;};" +
+            "r.onerror=function(){r=null;b=null;q=[];on=false;setTimeout(go,3000);};" +
+            "}" +
+            "go();" +
+            "}" +
+            "})();" +
+            "</script>";
 
     private final NitroHotelManager nitroHotelManager;
     private final NitroWebsocketCallback callback;
@@ -90,6 +121,42 @@ public class NitroHttpProxyIntercept extends HttpProxyInterceptInitializer {
 
     @Override
     public void init(HttpProxyInterceptPipeline pipeline) {
+        pipeline.addLast(new FullResponseIntercept() {
+            @Override
+            public boolean match(HttpRequest httpRequest, HttpResponse httpResponse, HttpProxyInterceptPipeline pipeline) {
+                String host = pipeline.getRequestProto().getHost();
+                if (host == null || !host.endsWith(ANUBIS_HOST)) {
+                    return false;
+                }
+                String contentType = httpResponse.headers().get(HttpHeaderNames.CONTENT_TYPE);
+                return httpResponse.status().code() == 200
+                        && contentType != null
+                        && contentType.contains("text/html");
+            }
+
+            @Override
+            public void handleResponse(HttpRequest httpRequest, FullHttpResponse httpResponse, HttpProxyInterceptPipeline pipeline) {
+                ByteBuf content = httpResponse.content();
+                String html = content.toString(StandardCharsets.UTF_8);
+
+                int headIdx = html.indexOf("<head");
+                if (headIdx == -1) {
+                    return;
+                }
+                int closeTag = html.indexOf(">", headIdx);
+                if (closeTag == -1) {
+                    return;
+                }
+
+                String injected = html.substring(0, closeTag + 1) + ANUBIS_BRIDGE_SCRIPT + html.substring(closeTag + 1);
+                byte[] bytes = injected.getBytes(StandardCharsets.UTF_8);
+                content.clear().writeBytes(bytes);
+                httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, bytes.length);
+
+                log.info("Injected Anubis bridge script into {}", httpRequest.uri());
+            }
+        });
+
         pipeline.addLast(new FullResponseIntercept(DEFAULT_MAX_CONTENT_LENGTH) {
             @Override
             public boolean match(HttpRequest httpRequest, HttpResponse httpResponse, HttpProxyInterceptPipeline pipeline) {

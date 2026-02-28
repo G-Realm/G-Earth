@@ -7,6 +7,7 @@ import gearth.app.protocol.connection.HState;
 import gearth.app.protocol.connection.HStateSetter;
 import gearth.app.protocol.connection.proxy.ProxyProvider;
 import gearth.app.protocol.connection.proxy.http.HttpProxyManager;
+import gearth.app.protocol.connection.proxy.nitro.anubis.AnubisBridgeServer;
 import gearth.app.protocol.connection.proxy.nitro.http.NitroHttpProxyIntercept;
 import gearth.app.protocol.connection.proxy.nitro.websocket.NitroWebsocketHandler;
 import gearth.app.services.nitro.NitroHotelManager;
@@ -25,6 +26,7 @@ public class NitroProxyProvider implements ProxyProvider, StateChangeListener {
     private final NitroHotelManager nitroHotelManager;
     private final NitroWebsocketHandler nitroWebsocketHandler;
     private final HttpProxyManager nitroHttpProxy;
+    private final AnubisBridgeServer anubisBridge;
     private final AtomicBoolean abortLock;
 
     public NitroProxyProvider(HProxySetter proxySetter, HStateSetter stateSetter, HConnection connection) {
@@ -33,12 +35,17 @@ public class NitroProxyProvider implements ProxyProvider, StateChangeListener {
         this.nitroHotelManager = new NitroHotelManager();
         this.nitroWebsocketHandler = new NitroWebsocketHandler(this.nitroHotelManager, proxySetter, stateSetter, connection);
         this.nitroHttpProxy = new HttpProxyManager();
+        this.anubisBridge = new AnubisBridgeServer(this.nitroWebsocketHandler);
         this.abortLock = new AtomicBoolean();
     }
 
     @Override
     public void start() throws IOException {
         connection.getStateObservable().addListener(this);
+
+        if (anubisBridge.start()) {
+            logger.info("AnubisBridge started on port {}", AnubisBridgeServer.PORT);
+        }
 
         logger.info("Starting nitro http proxy");
 
@@ -74,6 +81,12 @@ public class NitroProxyProvider implements ProxyProvider, StateChangeListener {
                 nitroHttpProxy.stop();
             } catch (Exception e) {
                 logger.error("Failed to stop nitro http proxy", e);
+            }
+
+            try {
+                anubisBridge.stop();
+            } catch (Exception e) {
+                logger.error("Failed to stop anubis bridge", e);
             }
 
             stateSetter.setState(HState.NOT_CONNECTED);
