@@ -90,6 +90,7 @@
                     <additionalModules>
                         <!-- Otherwise SSL errors: https://stackoverflow.com/a/55517159 -->
                         <additionalModule>jdk.crypto.ec</additionalModule>
+                        <additionalModule>jdk.net</additionalModule>
                         <!-- JavaFX -->
                         <additionalModule>javafx.fxml</additionalModule>
                         <additionalModule>javafx.web</additionalModule>
