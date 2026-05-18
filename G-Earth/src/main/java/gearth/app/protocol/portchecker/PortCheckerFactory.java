@@ -1,7 +1,6 @@
 package gearth.app.protocol.portchecker;
 
 import gearth.app.misc.OSValidator;
-import org.apache.commons.lang3.NotImplementedException;
 
 public final class PortCheckerFactory {
     private PortCheckerFactory() {}
@@ -15,6 +14,6 @@ public final class PortCheckerFactory {
             return new UnixPortChecker();
         }
 
-        throw new NotImplementedException("macOS port checker not implemented yet");
+        throw new UnsupportedOperationException("macOS port checker not implemented yet");
     }
 }
