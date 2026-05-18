@@ -30,8 +30,6 @@ class SimpleTerminalLogger implements PacketLogger {
 
     @Override
     public void appendMessage(HPacket packet, int types) {
-        if (packet.headerId() == -1) return;
-
         StringBuilder output = new StringBuilder();
 
         if ((types & MESSAGE_TYPE.BLOCKED.getValue()) != 0) {
@@ -63,8 +61,6 @@ class SimpleTerminalLogger implements PacketLogger {
 
     @Override
     public void appendStructure(HPacket packet, HMessage.Direction direction) {
-        if (packet.headerId() == -1) return;
-
         String expr = packet.toExpression(direction, packetInfoManager, true);
         if (!expr.equals("")) {
             System.out.println(expr);

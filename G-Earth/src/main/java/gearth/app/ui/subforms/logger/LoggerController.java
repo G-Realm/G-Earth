@@ -70,11 +70,10 @@ public class LoggerController extends SubForm {
             if (cbx_showAdditional.isSelected()) types |= PacketLogger.MESSAGE_TYPE.SHOW_ADDITIONAL_DATA.getValue();
 
             packetLogger.appendMessage(message.getPacket(), types);
-            
+
             if (cbx_showstruct.isSelected() && message.getPacket().length() < packetLimit) {
                 packetLogger.appendStructure(message.getPacket(), message.getDestination());
             }
-
         });
         });
     }

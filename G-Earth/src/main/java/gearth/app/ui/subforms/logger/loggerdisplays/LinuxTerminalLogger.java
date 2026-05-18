@@ -29,9 +29,6 @@ class LinuxTerminalLogger extends SimpleTerminalLogger {
 
     @Override
     public void appendMessage(HPacket packet, int types) {
-        // ignore packets with header -1
-        if (packet.headerId() == -1) return;
-
         StringBuilder output = new StringBuilder();
 
         if ((types & MESSAGE_TYPE.BLOCKED.getValue()) != 0) {
@@ -65,9 +62,6 @@ class LinuxTerminalLogger extends SimpleTerminalLogger {
 
     @Override
     public void appendStructure(HPacket packet, HMessage.Direction direction) {
-        // ignore packets with header -1
-        if (packet.headerId() == -1) return;
-
         String expr = packet.toExpression(direction, packetInfoManager, true);
         if (!expr.equals("")) {
             System.out.println(
