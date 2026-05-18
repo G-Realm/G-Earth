@@ -26,15 +26,11 @@ public class NitroWebsocketProxy extends HttpProxyIntercept {
         this.callback.onHandshakeComplete();
     }
 
-
     @Override
-    public void onWebsocketRequest(Channel clientChannel, Channel proxyChannel, WebSocketFrame frame,
-                                   HttpProxyInterceptPipeline pipeline) throws Exception {
+    public void onWebsocketRequest(Channel clientChannel, Channel proxyChannel, WebSocketFrame frame, HttpProxyInterceptPipeline pipeline) {
         try {
-            // Si le client ping, on pong
             if (frame instanceof PingWebSocketFrame ping) {
                 clientChannel.writeAndFlush(new PongWebSocketFrame(ping.content().retain()));
-                LOG.debug("WS CLIENT Ping -> Pong sent");
                 return;
             }
 
@@ -47,18 +43,14 @@ public class NitroWebsocketProxy extends HttpProxyIntercept {
         }
     }
 
-
     @Override
-    public void onWebsocketResponse(Channel clientChannel, Channel proxyChannel, WebSocketFrame frame,
-                                    HttpProxyInterceptPipeline pipeline) throws Exception {
+    public void onWebsocketResponse(Channel clientChannel, Channel proxyChannel, WebSocketFrame frame, HttpProxyInterceptPipeline pipeline) {
         try {
-            // Si le SERVEUR ping, on pong
             if (frame instanceof PingWebSocketFrame ping) {
                 proxyChannel.writeAndFlush(new PongWebSocketFrame(ping.content().retain()));
-                LOG.debug("WS SERVER Ping -> Pong sent");
                 return;
             }
-            // sinon ça marche normal
+
             final byte[] data = getBinaryData(frame);
             if (data != null) {
                 this.callback.onServerMessage(data);
@@ -73,21 +65,23 @@ public class NitroWebsocketProxy extends HttpProxyIntercept {
         this.callback.onClose();
     }
 
-
-
     private byte[] getBinaryData(WebSocketFrame frame) {
         if (frame instanceof BinaryWebSocketFrame binaryFrame) {
             final ByteBuf content = binaryFrame.content();
             final byte[] binaryData = new byte[content.readableBytes()];
+
             content.markReaderIndex();
+
             try {
                 content.readBytes(binaryData);
             } finally {
                 content.resetReaderIndex();
             }
+
             return binaryData;
         }
 
+        LOG.error("Unexpected nitro frame type: {}", frame.getClass());
         return null;
     }
 }
