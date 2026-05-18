@@ -1,5 +1,6 @@
 package gearth.app.services.nitro.hotels;
 
+import gearth.app.protocol.connection.proxy.nitro.NitroPacketEvent;
 import gearth.protocol.HPacket;
 import gearth.protocol.HPacketFormat;
 import gearth.app.services.nitro.NitroAsset;
@@ -201,41 +202,37 @@ public class HabboCity extends NitroHotel {
         }
 
         @Override
-        public byte[] clientToGearth(byte[] data) throws Exception {
+        public void clientToGearth(final NitroPacketEvent event) throws Exception {
             if (this.firstClient) {
                 this.firstClient = false;
 
-                data = this.staticCipherDec.doFinal(data);
+                event.buffer = this.staticCipherDec.doFinal(event.buffer);
 
-                this.initCiphers(data);
+                this.initCiphers(event.buffer);
             } else {
-                data = doCipher(this.clientCipherDec, data);
+                event.buffer = doCipher(this.clientCipherDec, event.buffer);
             }
-
-            return data;
         }
 
         @Override
-        public byte[] gearthToClient(byte[] data) {
-            return doCipher(this.clientCipherEnc, data);
+        public void gearthToClient(final NitroPacketEvent event) {
+            doCipher(this.clientCipherEnc, event.buffer);
         }
 
         @Override
-        public byte[] serverToGearth(byte[] data) {
-            return doCipher(this.serverCipherDec, data);
+        public void serverToGearth(final NitroPacketEvent event) {
+            event.buffer = doCipher(this.serverCipherDec, event.buffer);
         }
 
         @Override
-        public byte[] gearthToServer(byte[] data) throws Exception {
+        public void gearthToServer(final NitroPacketEvent event) throws Exception {
             if (this.firstServer) {
                 this.firstServer = false;
 
-                data = this.staticCipherEnc.doFinal(data);
+                event.buffer = this.staticCipherEnc.doFinal(event.buffer);
             } else {
-                data = doCipher(this.serverCipherEnc, data);
+                event.buffer = doCipher(this.serverCipherEnc, event.buffer);
             }
-
-            return data;
         }
     }
 }

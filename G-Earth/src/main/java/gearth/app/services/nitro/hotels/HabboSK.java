@@ -1,5 +1,6 @@
 package gearth.app.services.nitro.hotels;
 
+import gearth.app.protocol.connection.proxy.nitro.NitroPacketEvent;
 import gearth.protocol.HPacket;
 import gearth.protocol.HPacketFormat;
 import gearth.app.protocol.crypto.RC4;
@@ -117,39 +118,33 @@ public class HabboSK extends NitroHotel {
         }
 
         @Override
-        public byte[] clientToGearth(byte[] data) {
-            final byte[] plain = C2S_RC4_IN.cipher(data);
+        public void clientToGearth(final NitroPacketEvent event) {
+            final byte[] plain = C2S_RC4_IN.cipher(event.buffer);
 
             if (this.clientRandomKey == null) {
                 this.readClientRandomKey(plain);
             }
-
-            return plain;
         }
 
         @Override
-        public byte[] gearthToClient(byte[] data) throws NoSuchAlgorithmException {
+        public void gearthToClient(final NitroPacketEvent event) throws NoSuchAlgorithmException {
             if (this.S2C_RC4_OUT != null) {
-                data = S2C_RC4_OUT.cipher(data);
+                event.buffer = S2C_RC4_OUT.cipher(event.buffer);
             } else if (this.serverRandomKey == null) {
-                this.readServerRandomKey(data);
+                this.readServerRandomKey(event.buffer);
             }
-
-            return data;
         }
 
         @Override
-        public byte[] serverToGearth(byte[] data) {
+        public void serverToGearth(final NitroPacketEvent event) {
             if (this.S2C_RC4_IN != null) {
-                data = S2C_RC4_IN.cipher(data);
+                event.buffer = S2C_RC4_IN.cipher(event.buffer);
             }
-
-            return data;
         }
 
         @Override
-        public byte[] gearthToServer(byte[] data) {
-            return C2S_RC4_OUT.cipher(data);
+        public void gearthToServer(final NitroPacketEvent event) {
+            event.buffer = C2S_RC4_OUT.cipher(event.buffer);
         }
     }
 }

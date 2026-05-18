@@ -10,8 +10,8 @@ public interface NitroWebsocketCallback {
 
     void onClose();
 
-    void onClientMessage(byte[] buffer);
+    void onClientMessage(final byte[] buffer);
 
-    void onServerMessage(byte[] buffer);
+    void onServerMessage(final byte[] buffer);
 
 }

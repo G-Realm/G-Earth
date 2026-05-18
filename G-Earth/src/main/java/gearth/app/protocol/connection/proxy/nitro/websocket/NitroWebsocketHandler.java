@@ -1,6 +1,7 @@
 package gearth.app.protocol.connection.proxy.nitro.websocket;
 
 import gearth.app.protocol.HConnection;
+import gearth.app.protocol.connection.proxy.nitro.NitroPacketEvent;
 import gearth.protocol.HMessage;
 import gearth.app.protocol.StateChangeListener;
 import gearth.protocol.connection.HClient;
@@ -125,10 +126,12 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
     }
 
     @Override
-    public void onClientMessage(byte[] buffer) {
+    public void onClientMessage(final byte[] buffer) {
+        final NitroPacketEvent event = new NitroPacketEvent(buffer);
+
         if (this.packetModifier != null) {
             try {
-                buffer = this.packetModifier.clientToGearth(buffer);
+                this.packetModifier.clientToGearth(event);
             } catch (Exception e) {
                 logger.error("Failed to modify clientToGearth packet", e);
                 shutdownProxy();
@@ -136,7 +139,11 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
             }
         }
 
-        this.packetQueue.enqueue(buffer);
+        if (event.cancel) {
+            return;
+        }
+
+        this.packetQueue.enqueue(event.buffer, event.bypass);
 
         if (this.isHandshakeComplete) {
             try {
@@ -148,10 +155,12 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
     }
 
     @Override
-    public void onServerMessage(byte[] buffer) {
+    public void onServerMessage(final byte[] buffer) {
+        final NitroPacketEvent event = new NitroPacketEvent(buffer);
+
         if (this.packetModifier != null) {
             try {
-                buffer = this.packetModifier.serverToGearth(buffer);
+                this.packetModifier.serverToGearth(event);
             } catch (Exception e) {
                 logger.error("Failed to modify serverToGearth packet", e);
                 shutdownProxy();
@@ -159,15 +168,23 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
             }
         }
 
+        if (event.cancel) {
+            return;
+        }
+
         try {
-            this.clientPacketHandler.act(buffer);
+            if (event.bypass) {
+                this.clientPacketHandler.sendToStream(event.buffer);
+            } else {
+                this.clientPacketHandler.act(event.buffer);
+            }
         } catch (IOException e) {
             logger.error("Failed to handle server packet", e);
         }
     }
 
     /**
-     * Shutdown all connections and reset program state.
+     * Shutdown all connections and reset the program state.
      */
     public void shutdownProxy() {
         if (shutdownLock.get()) {

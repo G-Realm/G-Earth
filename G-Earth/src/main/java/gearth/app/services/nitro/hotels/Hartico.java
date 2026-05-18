@@ -1,5 +1,6 @@
 package gearth.app.services.nitro.hotels;
 
+import gearth.app.protocol.connection.proxy.nitro.NitroPacketEvent;
 import gearth.app.services.nitro.NitroAsset;
 import gearth.app.services.nitro.NitroHotel;
 import gearth.app.services.nitro.NitroPacketModifier;
@@ -121,42 +122,35 @@ public class Hartico extends NitroHotel {
         }
 
         @Override
-        public byte[] clientToGearth(byte[] data) throws GeneralSecurityException {
+        public void clientToGearth(final NitroPacketEvent event) throws GeneralSecurityException {
             if (isAuthenticated) {
-                data = decrypt(data);
+                event.buffer = decrypt(event.buffer);
             }
-
-            return data;
         }
 
         @Override
-        public byte[] gearthToClient(byte[] data) {
+        public void gearthToClient(final NitroPacketEvent event) {
             if (!isAuthenticated &&
-                    data.length == 6 &&
-                    data[0] == 0x00 &&
-                    data[1] == 0x00 &&
-                    data[2] == 0x00 &&
-                    data[3] == 0x02 &&
-                    data[4] == 0x09 &&
-                    data[5] == -69) {
+                    event.buffer.length == 6 &&
+                    event.buffer[0] == 0x00 &&
+                    event.buffer[1] == 0x00 &&
+                    event.buffer[2] == 0x00 &&
+                    event.buffer[3] == 0x02 &&
+                    event.buffer[4] == 0x09 &&
+                    event.buffer[5] == -69) {
                 isAuthenticated = true;
             }
-
-            return data;
         }
 
         @Override
-        public byte[] serverToGearth(byte[] data) {
-            return data;
+        public void serverToGearth(final NitroPacketEvent event) {
         }
 
         @Override
-        public byte[] gearthToServer(byte[] data)  throws GeneralSecurityException {
+        public void gearthToServer(final NitroPacketEvent event)  throws GeneralSecurityException {
             if (isAuthenticated) {
-                data = encrypt(data);
+                event.buffer = encrypt(event.buffer);
             }
-
-            return data;
         }
     }
 }
