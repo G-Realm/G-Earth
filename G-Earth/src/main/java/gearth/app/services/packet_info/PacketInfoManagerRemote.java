@@ -39,12 +39,18 @@ public class PacketInfoManagerRemote {
                 List<PacketInfo> synchronizedResult = Collections.synchronizedList(result);
                 for (RemotePacketInfoProvider provider : providers) {
                     new Thread(() -> {
-                        final List<PacketInfo> packets = provider.provide();
-                        if (!packets.isEmpty()) {
-                            synchronizedResult.addAll(packets);
-                            version.set(provider.getHotelVersion());
+                        try {
+                            final List<PacketInfo> packets = provider.provide();
+                            if (!packets.isEmpty()) {
+                                synchronizedResult.addAll(packets);
+                                version.set(provider.getHotelVersion());
+                            }
+                        } catch (Throwable t) {
+                            // Never let a provider crash deadlock the semaphore wait below.
+                            LOG.error("Packet info provider {} failed", provider.getClass().getSimpleName(), t);
+                        } finally {
+                            blockUntilComplete.release();
                         }
-                        blockUntilComplete.release();
                     }).start();
                 }
 
