@@ -5,6 +5,7 @@ import gearth.app.services.nitro.hotels.HabboCity;
 import gearth.app.services.nitro.hotels.HabboSK;
 import gearth.app.services.nitro.hotels.Hartico;
 import gearth.app.services.nitro.hotels.HubbeBiz;
+import gearth.app.services.nitro.hotels.HubbeSt;
 import gearth.app.services.nitro.hotels.LeetNL;
 import gearth.app.services.nitro.hotels.LeethotelBiz;
 
@@ -23,6 +24,7 @@ public class NitroHotelManager {
         this.hotels.add(new LeethotelBiz());
         this.hotels.add(new HabbletCity());
         this.hotels.add(new HabboSK());
+        this.hotels.add(new HubbeSt());
         this.hotels.add(new HubbeBiz());
     }
 
