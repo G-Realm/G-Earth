@@ -35,7 +35,7 @@ public class HEntity {
 
         switch (entityTypeId) {
             case 1:
-                stuff = new Object[5];
+                stuff = new Object[6];
                 gender = HGender.fromString(packet.readString());
                 stuff[0] = packet.readInteger();
                 stuff[1] = packet.readInteger();
@@ -43,6 +43,7 @@ public class HEntity {
                 stuff[2] = packet.readString();
                 stuff[3] = packet.readInteger();
                 stuff[4] = packet.readBoolean();
+                stuff[5] = packet.readInteger();
                 break;
             case 2:
                 stuff = new Object[12];
