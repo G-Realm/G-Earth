@@ -193,7 +193,7 @@ public class GExtensionStoreController implements Initializable {
 
                 if (currentOverviews.size() < 2) WebUtils.addClass((Element) return_btn.getParentNode(), "invisible");
                 if (overview.buttonText() == null) WebUtils.addClass((Element) generic_btn.getParentNode(), "invisible");
-                else webView.getEngine().executeScript("document.getElementById('generic_btn').innerHTML = '" + overview.buttonText() + "';");
+                else webView.getEngine().executeScript("document.getElementById('generic_btn').innerHTML = '" + WebUtils.escapeJSString(overview.buttonText()) + "';");
 
 
                 WebUtils.removeClass((Element) generic_btn.getParentNode(), "gdisabled");

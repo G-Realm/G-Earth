@@ -67,7 +67,7 @@ public class CategoryItem implements ContentItem {
         String category = htmlBuilder.toString();
         GExtensionStoreController controller = gExtensionStore.getController();
 
-        controller.getWebView().getEngine().executeScript("document.getElementById('" + controller.getContentItemsContainer() + "').innerHTML += '" + category + "';");
+        controller.getWebView().getEngine().executeScript("document.getElementById('" + controller.getContentItemsContainer() + "').innerHTML += '" + WebUtils.escapeJSString(category) + "';");
 
         JSObject window = (JSObject) controller.getWebView().getEngine().executeScript("window");
         window.setMember(id, this);

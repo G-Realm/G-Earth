@@ -71,6 +71,14 @@ public class WebUtils {
         return text.replace("\"", "&quot;");
     }
 
+    public static String escapeJSString(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+    }
+
     public static void clearElement(Element node) {
         while (node.hasChildNodes())
             node.removeChild(node.getFirstChild());

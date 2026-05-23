@@ -68,7 +68,7 @@ public class StoreExtensionItem implements ContentItem {
         String extension = htmlBuilder.toString();
         GExtensionStoreController controller = gExtensionStore.getController();
 
-        controller.getWebView().getEngine().executeScript("document.getElementById('" + controller.getContentItemsContainer() + "').innerHTML += '" + extension + "';");
+        controller.getWebView().getEngine().executeScript("document.getElementById('" + controller.getContentItemsContainer() + "').innerHTML += '" + WebUtils.escapeJSString(extension) + "';");
 
         JSObject window = (JSObject) controller.getWebView().getEngine().executeScript("window");
         window.setMember(id, this);

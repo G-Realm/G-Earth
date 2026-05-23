@@ -70,7 +70,7 @@ public class StoreExtensionInstalledItem extends StoreExtensionItem {
             GExtensionStoreController controller = gExtensionStore.getController();
 
             controller.getWebView().getEngine().executeScript("document.getElementById('" +
-                    controller.getContentItemsContainer() + "').innerHTML += '" + extension + "';");
+                    controller.getContentItemsContainer() + "').innerHTML += '" + WebUtils.escapeJSString(extension) + "';");
         }
     }
 }
