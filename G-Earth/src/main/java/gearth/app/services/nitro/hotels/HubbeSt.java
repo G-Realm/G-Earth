@@ -28,26 +28,15 @@ public class HubbeSt extends NitroHotel {
         private boolean firstPacket;
 
         @Override
-        public void clientToGearth(NitroPacketEvent e) throws Exception {
+        public void clientToGearth(NitroPacketEvent e) {
             if (!firstPacket) {
                 firstPacket = true;
                 e.bypass = true;
             }
         }
 
-        @Override
-        public void gearthToClient(NitroPacketEvent e) throws Exception {
-
-        }
-
-        @Override
-        public void serverToGearth(NitroPacketEvent e) throws Exception {
-
-        }
-
-        @Override
-        public void gearthToServer(NitroPacketEvent e) throws Exception {
-
-        }
+        @Override public void gearthToClient(NitroPacketEvent e) {}
+        @Override public void serverToGearth(NitroPacketEvent e) {}
+        @Override public void gearthToServer(NitroPacketEvent e) {}
     }
 }
