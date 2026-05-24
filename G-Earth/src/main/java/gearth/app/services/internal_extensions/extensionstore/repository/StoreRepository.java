@@ -1,14 +1,20 @@
 package gearth.app.services.internal_extensions.extensionstore.repository;
 
+import gearth.app.services.internal_extensions.extensionstore.application.WebUtils;
 import gearth.app.services.internal_extensions.extensionstore.repository.models.ExtCategory;
 import gearth.app.services.internal_extensions.extensionstore.repository.models.ExtFramework;
 import gearth.app.services.internal_extensions.extensionstore.repository.models.StoreConfig;
 import gearth.app.services.internal_extensions.extensionstore.repository.models.StoreData;
 import gearth.app.services.internal_extensions.extensionstore.repository.models.StoreExtension;
 import gearth.app.services.internal_extensions.extensionstore.repository.querying.ExtensionOrdering;
-import gearth.app.services.internal_extensions.extensionstore.tools.EncodingUtil;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -119,7 +125,7 @@ public class StoreRepository {
 
     public String getResourceUrl(String... resource) {
         return String.format("https://raw.githubusercontent.com/%s/repo/%s/%s", source, repoVersion,
-                Arrays.stream(resource).map(EncodingUtil::encodeURIComponent).collect(Collectors.joining("/")));
+                Arrays.stream(resource).map(WebUtils::escapeUriComponent).collect(Collectors.joining("/")));
     }
 }
 

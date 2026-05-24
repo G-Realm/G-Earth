@@ -193,19 +193,19 @@ public class GExtensionStoreController implements Initializable {
 
                 if (currentOverviews.size() < 2) WebUtils.addClass((Element) return_btn.getParentNode(), "invisible");
                 if (overview.buttonText() == null) WebUtils.addClass((Element) generic_btn.getParentNode(), "invisible");
-                else webView.getEngine().executeScript("document.getElementById('generic_btn').innerHTML = '" + overview.buttonText() + "';");
+                else webView.getEngine().executeScript("document.getElementById('generic_btn').innerHTML = '" + WebUtils.escapeJSString(overview.buttonText()) + "';");
 
 
                 WebUtils.removeClass((Element) generic_btn.getParentNode(), "gdisabled");
                 if (!overview.buttonEnabled()) WebUtils.addClass((Element) generic_btn.getParentNode(), "gdisabled");
 
                 webView.getEngine().executeScript(String.format("setHeading(\"%s\", \"%s\", \"%s\")",
-                        WebUtils.escapeHtmlNoBackslash(overview.header().iconUrl()),
-                        WebUtils.escapeMessageAndQuotes(overview.header().title()),
-                        WebUtils.escapeMessageAndQuotes(overview.header().description())
+                        WebUtils.escapeJSString(overview.header().iconUrl()),
+                        WebUtils.escapeJSString(overview.header().title()),
+                        WebUtils.escapeJSString(overview.header().description())
                 ));
                 webView.getEngine().executeScript(String.format("setContentTitle(\"%s\")",
-                        WebUtils.escapeMessageAndQuotes(overview.header().contentTitle())
+                        WebUtils.escapeJSString(overview.header().contentTitle())
                 ));
             });
         }

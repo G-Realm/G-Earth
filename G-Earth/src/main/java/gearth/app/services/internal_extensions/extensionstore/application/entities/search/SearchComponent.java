@@ -2,6 +2,7 @@ package gearth.app.services.internal_extensions.extensionstore.application.entit
 
 import gearth.app.services.internal_extensions.extensionstore.GExtensionStore;
 import gearth.app.services.internal_extensions.extensionstore.application.GExtensionStoreController;
+import gearth.app.services.internal_extensions.extensionstore.application.WebUtils;
 import gearth.app.services.internal_extensions.extensionstore.application.entities.ContentItem;
 import gearth.app.services.internal_extensions.extensionstore.repository.StoreRepository;
 import gearth.app.services.internal_extensions.extensionstore.repository.querying.ExtensionOrdering;
@@ -95,7 +96,7 @@ public class SearchComponent implements ContentItem {
                 .append("<div class=\"centeredFlex\">")
                 .append("<label for=\"keyword\">").append(LanguageBundle.get("ext.store.search.bykeyword")).append(":</label>")
                 .append(String.format("<input id=\"keyword\" value=\"%s\" name=\"keyword\" class=\"inputBox\" type=\"text\" " +
-                        "oninput=\"%s.setSearchKeyword(this.value);\">", searchKeyword, id))
+                        "oninput=\"%s.setSearchKeyword(this.value);\">", WebUtils.escapeHtml(searchKeyword), id))
                 .append("</div>")
 
                 .append("<div class=\"centeredFlex\">")
@@ -135,7 +136,7 @@ public class SearchComponent implements ContentItem {
         String searchHtml = htmlBuilder.toString();
         GExtensionStoreController controller = gExtensionStore.getController();
 
-        controller.getWebView().getEngine().executeScript("document.getElementById('" + controller.getContentItemsContainer() + "').innerHTML += '" + searchHtml + "';");
+        controller.getWebView().getEngine().executeScript("document.getElementById('" + controller.getContentItemsContainer() + "').innerHTML += '" + WebUtils.escapeJSString(searchHtml) + "';");
 
         JSObject window = (JSObject) controller.getWebView().getEngine().executeScript("window");
         window.setMember(id, this);

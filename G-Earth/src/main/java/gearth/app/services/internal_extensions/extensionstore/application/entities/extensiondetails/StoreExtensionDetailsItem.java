@@ -156,7 +156,7 @@ public class StoreExtensionDetailsItem implements ContentItem {
 
         String forum = htmlBuilder.toString();
         GExtensionStoreController c = gExtensionStore.getController();
-        c.getWebView().getEngine().executeScript("document.getElementById('" + c.getContentItemsContainer() + "').innerHTML += '" + forum + "';");
+        c.getWebView().getEngine().executeScript("document.getElementById('" + c.getContentItemsContainer() + "').innerHTML += '" + WebUtils.escapeJSString(forum) + "';");
 
         JSObject window = (JSObject) c.getWebView().getEngine().executeScript("window");
         window.setMember(id, this);

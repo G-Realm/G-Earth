@@ -1,45 +1,40 @@
 package gearth.app.services.internal_extensions.extensionstore.application;
 
 import gearth.app.ui.translations.LanguageBundle;
+import org.owasp.encoder.Encode;
 import org.w3c.dom.Element;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class WebUtils {
 
-
-    private static HashMap<String, String> entityMap = new HashMap<>();
-    static {
-        entityMap.put("&", "&amp;");
-        entityMap.put("<", "&lt;");
-        entityMap.put(">", "&gt;");
-//        entityMap.put("\"", "&quot;");
-        entityMap.put("'", "&#39;");
-//        entityMap.put("/", "&#x2F;");
-        entityMap.put("`", "&#x60;");
-        entityMap.put("=", "&#x3D;");
-    }
-
     public static String escapeHtml(String s) {
-        s = escapeHtmlNoBackslash(s);
-        return s.replace("/", "&#x2F;");
+        return Encode.forHtml(s);
     }
 
-    public static String escapeHtmlNoBackslash(String s) {
-        for(String key : entityMap.keySet()) {
-            s = s.replace(key, entityMap.get(key));
-        }
-        return s;
+    public static String escapeUriComponent(String s) {
+        return Encode.forUriComponent(s);
+    }
+
+    public static String escapeMessage(String text) {
+        return Encode.forHtml(text)
+                .replace("\n\r", "<br>")
+                .replace("\n", "<br>")
+                .replace("\r", "<br>");
+    }
+
+    public static String escapeJSString(String s) {
+        if (s == null) return "";
+        return Encode.forJavaScript(s);
     }
 
     public static String elapsedSince(LocalDateTime time) {
-        return elapsedTime(System.currentTimeMillis()/1000 - time.atZone(ZoneId.systemDefault()).toEpochSecond());
+        return elapsedTime(System.currentTimeMillis() / 1000 - time.atZone(ZoneId.systemDefault()).toEpochSecond());
     }
 
     public static String elapsedTime(long time) {
@@ -56,19 +51,6 @@ public class WebUtils {
         if (months < 12) return months + " " + LanguageBundle.get("ext.store.elapsedtime.month." + (months == 1 ? "single": "multiple"));
         long years = days/365;
         return years + " " + LanguageBundle.get("ext.store.elapsedtime.year." + (years == 1 ? "single": "multiple"));
-    }
-
-    public static String escapeMessage(String text) {
-        text = escapeHtml(text);
-        return text
-                .replace("\n\r", "<br>")
-                .replace("\n", "<br>")
-                .replace("\r", "<br>");
-    }
-
-    public static String escapeMessageAndQuotes(String text) {
-        text = escapeMessage(text);
-        return text.replace("\"", "&quot;");
     }
 
     public static void clearElement(Element node) {
