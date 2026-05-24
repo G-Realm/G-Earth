@@ -16,15 +16,12 @@ bin/
 
 # vsCode
 Extensions/BlockReplacePackets/.classpath
-.project
-.settings/org.eclipse.m2e.core.prefs
 .vscode/launch.json
 
-*.classpath
-*.project
-*.settings/org.eclipse.jdt.apt.core.prefs
-*.settings/org.eclipse.jdt.core.prefs
-*.settings/org.eclipse.m2e.core.prefs
+# eclipse
+.classpath
+.project
+.settings/
 
 # Certificates
 *.p12
