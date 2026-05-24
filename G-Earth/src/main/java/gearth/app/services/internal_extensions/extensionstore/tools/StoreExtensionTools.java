@@ -5,6 +5,7 @@ import gearth.app.misc.OSValidator;
 import gearth.app.services.extension_handler.extensions.implementations.network.NetworkExtensionAuthenticator;
 import gearth.app.services.extension_handler.extensions.implementations.network.executer.ExecutionInfo;
 import gearth.app.services.extension_handler.extensions.implementations.network.executer.NormalExtensionRunner;
+import gearth.app.services.internal_extensions.extensionstore.application.WebUtils;
 import gearth.app.services.internal_extensions.extensionstore.repository.StoreFetch;
 import gearth.app.services.internal_extensions.extensionstore.repository.StoreRepository;
 import gearth.app.services.internal_extensions.extensionstore.repository.models.StoreExtension;
@@ -105,7 +106,7 @@ public class StoreExtensionTools {
         new Thread(() -> {
 
             String downloadUrl = String.format("https://github.com/sirjonasxx/G-ExtensionStore/raw/repo/%s/store/extensions/%s/extension.zip", storeRepository.getRepoVersion(),
-                    EncodingUtil.encodeURIComponent(name));
+                    WebUtils.escapeUriComponent(name));
             Optional<StoreExtension> maybeExt = storeRepository.getExtensions().stream().filter(e -> e.getTitle().equals(name)).findFirst();
             if (maybeExt.isPresent()) {
                 StoreExtension ext = maybeExt.get();

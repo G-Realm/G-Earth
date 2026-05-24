@@ -200,12 +200,12 @@ public class GExtensionStoreController implements Initializable {
                 if (!overview.buttonEnabled()) WebUtils.addClass((Element) generic_btn.getParentNode(), "gdisabled");
 
                 webView.getEngine().executeScript(String.format("setHeading(\"%s\", \"%s\", \"%s\")",
-                        WebUtils.escapeHtmlNoBackslash(overview.header().iconUrl()),
-                        WebUtils.escapeMessageAndQuotes(overview.header().title()),
-                        WebUtils.escapeMessageAndQuotes(overview.header().description())
+                        WebUtils.escapeJSString(overview.header().iconUrl()),
+                        WebUtils.escapeJSString(overview.header().title()),
+                        WebUtils.escapeJSString(overview.header().description())
                 ));
                 webView.getEngine().executeScript(String.format("setContentTitle(\"%s\")",
-                        WebUtils.escapeMessageAndQuotes(overview.header().contentTitle())
+                        WebUtils.escapeJSString(overview.header().contentTitle())
                 ));
             });
         }

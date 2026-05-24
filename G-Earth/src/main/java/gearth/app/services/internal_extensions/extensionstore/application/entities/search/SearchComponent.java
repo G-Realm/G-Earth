@@ -96,7 +96,7 @@ public class SearchComponent implements ContentItem {
                 .append("<div class=\"centeredFlex\">")
                 .append("<label for=\"keyword\">").append(LanguageBundle.get("ext.store.search.bykeyword")).append(":</label>")
                 .append(String.format("<input id=\"keyword\" value=\"%s\" name=\"keyword\" class=\"inputBox\" type=\"text\" " +
-                        "oninput=\"%s.setSearchKeyword(this.value);\">", searchKeyword, id))
+                        "oninput=\"%s.setSearchKeyword(this.value);\">", WebUtils.escapeHtml(searchKeyword), id))
                 .append("</div>")
 
                 .append("<div class=\"centeredFlex\">")
