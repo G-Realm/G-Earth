@@ -9,7 +9,7 @@ public class HabbletCity extends NitroHotel {
 
     public HabbletCity() {
         super("habblet.city",
-                Collections.singletonList("wss://proxy.habblet.city/"),
+                Collections.singletonList("wss://proxy.habblet.city/*"),
                 Collections.emptyList());
     }
 

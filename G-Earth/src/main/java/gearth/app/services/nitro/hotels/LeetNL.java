@@ -11,7 +11,7 @@ public class LeetNL extends NitroHotel {
 
     public LeetNL() {
         super("leet.city",
-                Collections.singletonList("wss://proxy.leet.city/"),
+                Collections.singletonList("wss://proxy.leet.city/*"),
                 Collections.emptyList());
     }
 

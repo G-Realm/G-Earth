@@ -19,11 +19,18 @@ public abstract class NitroHotel {
     }
 
     public boolean hasWebsocket(final String websocketUrl) {
-        return websocketUrls.contains(websocketUrl);
-    }
+        for (final String url : websocketUrls) {
+            if (url.endsWith("*")) {
+                final String prefix = url.substring(0, url.length() - 1);
+                if (websocketUrl.startsWith(prefix)) {
+                    return true;
+                }
+            } else if (websocketUrl.equals(url)) {
+                return true;
+            }
+        }
 
-    public List<String> getWebsocketUrls() {
-        return websocketUrls;
+        return false;
     }
 
     public void checkAsset(final String host, final String uri, final byte[] data) {

@@ -9,7 +9,7 @@ public class LeethotelBiz extends NitroHotel {
 
     public LeethotelBiz() {
         super("leethotel.biz",
-                Collections.singletonList("wss://proxy.leethotel.biz/"),
+                Collections.singletonList("wss://proxy.leethotel.biz/*"),
                 Collections.emptyList());
     }
 
