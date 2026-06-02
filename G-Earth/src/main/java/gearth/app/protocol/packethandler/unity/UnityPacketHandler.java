@@ -58,4 +58,30 @@ public class UnityPacketHandler extends PacketHandler {
             currentIndex++;
         }
     }
+
+    public Verdict interceptSync(byte[] buffer, long timeoutMs) {
+        synchronized (actLock) {
+            final HMessage hMessage = new HMessage(new HPacket(buffer), direction, currentIndex);
+            final HMessage result = manipulateSync(hMessage, timeoutMs);
+            currentIndex++;
+            return new Verdict(result.isBlocked(), result.getPacket().toBytes());
+        }
+    }
+
+    public void reportOnly(byte[] buffer) {
+        synchronized (actLock) {
+            final HMessage hMessage = new HMessage(new HPacket(buffer), direction, currentIndex);
+            manipulateAsync(hMessage);
+            currentIndex++;
+        }
+    }
+
+    public static final class Verdict {
+        public final boolean blocked;
+        public final byte[] bytes;
+        Verdict(boolean blocked, byte[] bytes) {
+            this.blocked = blocked;
+            this.bytes = bytes;
+        }
+    }
 }
