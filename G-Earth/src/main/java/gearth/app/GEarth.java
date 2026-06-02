@@ -36,6 +36,7 @@ public class GEarth extends Application {
     public static String storeVersion;
     public static String repository;
     public static ObservableObject<Theme> observableTheme;
+    public static ObservableObject<Language> observableLanguage;
 
     private Stage stage;
     private GEarthController controller;
@@ -47,6 +48,7 @@ public class GEarth extends Application {
                         ThemeFactory.getDefaultTheme()
         );
 
+        observableLanguage = new ObservableObject<>(LanguageBundle.getLanguage());
 
         // Load build.properties
         try {
@@ -190,6 +192,10 @@ public class GEarth extends Application {
 
     public static ObservableObject<Theme> getThemeObservable() {
         return observableTheme;
+    }
+
+    public static ObservableObject<Language> getLanguageObservable() {
+        return observableLanguage;
     }
 
     public static Theme getTheme() {

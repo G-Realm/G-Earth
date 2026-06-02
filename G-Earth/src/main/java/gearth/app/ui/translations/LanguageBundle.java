@@ -1,5 +1,6 @@
 package gearth.app.ui.translations;
 
+import gearth.app.GEarth;
 import gearth.app.misc.Cacher;
 
 import java.util.Enumeration;
@@ -40,6 +41,9 @@ public class LanguageBundle extends ResourceBundle {
         current = lang;
         requireUpdate.forEach(TranslatableString::trigger);
         Cacher.put(LANGUAGE_CACHE_KEY, current.toString());
+        if (GEarth.observableLanguage != null) {
+            GEarth.observableLanguage.setObject(lang);
+        }
     }
 
     public static Language getLanguage() {
