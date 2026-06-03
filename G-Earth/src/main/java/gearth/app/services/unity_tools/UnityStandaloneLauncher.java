@@ -55,7 +55,7 @@ public class UnityStandaloneLauncher {
     public Optional<Process> connect(int bridgePort) {
         for (long pid : findRunningClients()) {
             if (claim(pid)) {
-                Optional<Process> attached = run(new String[]{"-p", Long.toString(pid)}, bridgePort, "attaching to running pid " + pid);
+                Optional<Process> attached = run(new String[]{"-p", Long.toString(pid)}, bridgePort, "attaching to running pid " + pid, null);
                 if (attached.isPresent()) return attached;
                 release();
             }
@@ -68,7 +68,7 @@ public class UnityStandaloneLauncher {
         }
 
         Set<Long> before = new HashSet<>(findRunningClients());
-        Optional<Process> spawned = run(new String[]{"-f", clientExe.get().toAbsolutePath().toString()}, bridgePort, "spawning " + clientExe.get());
+        Optional<Process> spawned = run(new String[]{"-f", clientExe.get().toAbsolutePath().toString()}, bridgePort, "spawning " + clientExe.get(), clientExe.get().getParent().toFile());
         if (spawned.isPresent()) claimSpawned(before);
         return spawned;
     }
@@ -120,7 +120,7 @@ public class UnityStandaloneLauncher {
                 .collect(Collectors.toList());
     }
 
-    private Optional<Process> run(String[] target, int bridgePort, String what) {
+    private Optional<Process> run(String[] target, int bridgePort, String what, File workingDir) {
         File agent = resolveAgent();
         if (agent == null) {
             LOG.error("agent.js could not be extracted");
@@ -144,6 +144,7 @@ public class UnityStandaloneLauncher {
             command.add("v8");
 
             ProcessBuilder builder = new ProcessBuilder(command);
+            if (workingDir != null) builder.directory(workingDir);
             builder.environment().put("GEARTH_BRIDGE_PORT", Integer.toString(bridgePort));
             builder.redirectErrorStream(true);
             Process process = builder.start();

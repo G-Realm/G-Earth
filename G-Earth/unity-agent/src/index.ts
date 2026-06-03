@@ -52,7 +52,7 @@ const criticalSection = Memory.alloc(64); initCriticalSection(criticalSection);
 
 let bridgeSocket = INVALID_SOCKET, bridgeReady = false;
 
-function connectBridge(revision: string): boolean {
+function connectBridge(revision: string, host: string): boolean {
   const wsaData = Memory.alloc(512);
   wsaStartup(0x0202, wsaData);
   const sock = (openSocket(2, 1, 6) as number);
@@ -71,11 +71,46 @@ function connectBridge(revision: string): boolean {
   header.writeU8(0xff); header.add(1).writeU8((revisionLength >> 24) & 0xff); header.add(2).writeU8((revisionLength >> 16) & 0xff);
   header.add(3).writeU8((revisionLength >> 8) & 0xff); header.add(4).writeU8(revisionLength & 0xff);
   sendAll(header, 5); sendAll(revisionBytes, revisionLength);
+  const hostBytes = Memory.allocUtf8String(host);
+  const hostLength = host.length;
+  const hostHeader = Memory.alloc(4);
+  hostHeader.writeU8((hostLength >> 24) & 0xff); hostHeader.add(1).writeU8((hostLength >> 16) & 0xff);
+  hostHeader.add(2).writeU8((hostLength >> 8) & 0xff); hostHeader.add(3).writeU8(hostLength & 0xff);
+  sendAll(hostHeader, 4); if (hostLength > 0) sendAll(hostBytes, hostLength);
   bridgeReady = true;
   return true;
 }
 function sendAll(buffer: NativePointer, len: number): boolean { let sent = 0; while (sent < len) { const written = (socketSend(bridgeSocket, buffer.add(sent), len - sent, 0) as number); if (written <= 0) { bridgeReady = false; return false; } sent += written; } return true; }
 function recvAll(buffer: NativePointer, len: number): boolean { let received = 0; while (received < len) { const chunk = (socketRecv(bridgeSocket, buffer.add(received), len - received, 0) as number); if (chunk <= 0) return false; received += chunk; } return true; }
+
+let gameHost = "";
+let readyToConnect = false;
+function looksLikeGameHost(name: string): boolean { const lower = name.toLowerCase(); return lower.indexOf("game") === 0 && lower.indexOf("habbo") >= 0; }
+function ensureConnected(): void {
+  if (shuttingDown || bridgeReady || !readyToConnect) return;
+  if (connectBridge(CLIENT_VERSION, gameHost)) log("[agent] G-Earth bridge connected host=" + (gameHost || "(unknown)"));
+}
+function captureHost(name: string | null): void {
+  if (name && !gameHost && looksLikeGameHost(name)) { gameHost = name; readyToConnect = true; log("[host] game host " + name); ensureConnected(); }
+}
+function captureHostFromMemory(): void {
+  if (gameHost) return;
+  try {
+    const objs = Il2Cpp.gc.choose(Il2Cpp.corlib.class("System.String"));
+    for (let i = 0; i < objs.length; i++) {
+      const handle = objs[i].handle;
+      let value: string | null;
+      try { const len = handle.add(8).readS32(); if (len < 12 || len > 200) continue; value = handle.add(12).readUtf16String(len); } catch (e) { continue; }
+      if (!value || value.toLowerCase().indexOf("habbo") < 0) continue;
+      const match = value.match(/^wss?:\/\/([^/:]+)/i);
+      const candidate = match ? match[1] : value;
+      const lower = candidate.toLowerCase();
+      if (lower.indexOf("game") === 0 && lower.indexOf(".habbo") > 0 && candidate.indexOf("/") < 0) { gameHost = candidate; log("[host] resolved from memory " + candidate); return; }
+    }
+  } catch (e) { log("[host] memory scan failed " + e); }
+}
+try { const dns = winsock.findExportByName("GetAddrInfoW"); if (dns) Interceptor.attach(dns, { onEnter(args) { try { if (!args[0].isNull()) captureHost(args[0].readUtf16String()); } catch (e) {} } }); } catch (e) {}
+try { const dns = winsock.findExportByName("getaddrinfo"); if (dns) Interceptor.attach(dns, { onEnter(args) { try { if (!args[0].isNull()) captureHost(args[0].readUtf8String()); } catch (e) {} } }); } catch (e) {}
 
 let outCount = 0, inCount = 0;
 let outBusy = false;
@@ -497,6 +532,7 @@ function main(): void {
             if (declaredLen < 2 || declaredLen > 0x200000) return;
             const bytes = readArray(array, 0, 0);
             if (!isHabbo(bytes)) return;
+            if (!readyToConnect) { readyToConnect = true; if (gameHost) ensureConnected(); else setTimeout(() => Il2Cpp.perform(() => { captureHostFromMemory(); ensureConnected(); }), 0); }
             if (!boundOutSend) { boundOutSend = cand.address; outSendFn = new NativeFunction(cand.address, "void", ["pointer", "pointer", "pointer"]); outThreadId = Process.getCurrentThreadId(); log("[OUT bound] " + cand.className + " tid=" + outThreadId); }
             outSendThis = args[0]; outSendMethod = args[2];
             if (isHello(bytes)) resetCipherState();
@@ -555,7 +591,6 @@ function main(): void {
     });
   });
 
-  function ensureConnected(): void { if (shuttingDown || bridgeReady) return; if (connectBridge(CLIENT_VERSION)) log("[agent] G-Earth bridge connected"); }
   ensureConnected();
   every(2000, ensureConnected);
   log("[agent] ready (" + (bridgeReady ? "bridge connected" : "waiting for G-Earth bridge") + ")");

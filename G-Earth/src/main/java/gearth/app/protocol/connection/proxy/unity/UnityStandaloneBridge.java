@@ -133,7 +133,15 @@ class UnityStandaloneBridge {
             byte[] revBytes = new byte[revLen];
             in.readFully(revBytes);
             String revision = new String(revBytes, StandardCharsets.UTF_8);
-            LOG.info("Standalone client connected, revision {}", revision);
+
+            int hostLen = in.readInt();
+            String host = "";
+            if (hostLen > 0 && hostLen <= 256) {
+                byte[] hostBytes = new byte[hostLen];
+                in.readFully(hostBytes);
+                host = new String(hostBytes, StandardCharsets.UTF_8);
+            }
+            LOG.info("Standalone client connected, revision {} host {}", revision, host);
 
             TcpSession session = new TcpSession(rawOut);
 
@@ -149,7 +157,7 @@ class UnityStandaloneBridge {
                     session,
                     HMessage.Direction.TOSERVER);
 
-            HProxy proxy = new HProxy(HClient.UNITY, "", "", -1, -1, "");
+            HProxy proxy = new HProxy(HClient.UNITY, host, host, -1, -1, "");
             proxy.verifyProxy(inHandler, outHandler, revision, "standalone");
             proxySetter.setProxy(proxy);
             stateSetter.setState(HState.CONNECTED);
