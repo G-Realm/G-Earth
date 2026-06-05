@@ -27,6 +27,8 @@ public class ExtensionLoggerController implements Initializable {
         area.getStyleClass().add("themed-background");
         area.setWrapText(true);
         area.setEditable(false);
+        // RichTextFX keeps unlimited rich-text undo history by default; logs do not need it.
+        area.setUndoManager(null);
 
         VirtualizedScrollPane<StyleClassedTextArea> vsPane = new VirtualizedScrollPane<>(area);
         borderPane.setCenter(vsPane);
