@@ -390,6 +390,7 @@ public class UiLoggerController implements Initializable {
 
     public void clearText(ActionEvent actionEvent) {
         area.clear();
+        System.gc();
     }
 
     public void onDisconnect() {
