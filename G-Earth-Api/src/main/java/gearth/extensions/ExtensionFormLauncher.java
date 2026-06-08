@@ -55,6 +55,11 @@ public class ExtensionFormLauncher extends Application {
             public boolean canDelete() {
                 return extensionForm.canDelete();
             }
+
+            @Override
+            public void handleLanguageChange(String locale) {
+                extensionForm.handleLanguageChange(locale);
+            }
         };
         extensionForm.hostServices = getHostServices();
         extensionForm.extension = extension;

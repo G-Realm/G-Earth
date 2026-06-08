@@ -64,6 +64,10 @@ public enum Language {
         return icon;
     }
 
+    public String getLocale() {
+        return locale;
+    }
+
     public static MenuItem[] getMenuItems() {
         return Arrays.stream(values())
                 .map(Language::asMenuItem)
