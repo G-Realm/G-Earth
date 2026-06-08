@@ -161,7 +161,6 @@ public class UiLoggerController implements Initializable {
         area = new StyleClassedTextArea();
         area.getStyleClass().add("dark");
         area.setWrapText(true);
-        // RichTextFX keeps unlimited rich-text undo history by default, which retains cleared packet logs.
         area.setUndoManager(null);
 
         VirtualizedScrollPane<StyleClassedTextArea> vsPane = new VirtualizedScrollPane<>(area);
@@ -391,8 +390,6 @@ public class UiLoggerController implements Initializable {
 
     public void clearText(ActionEvent actionEvent) {
         area.clear();
-        area.getUndoManager().forgetHistory();
-        System.gc();
     }
 
     public void onDisconnect() {
