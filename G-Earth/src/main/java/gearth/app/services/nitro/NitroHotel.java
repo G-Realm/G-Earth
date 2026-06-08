@@ -42,6 +42,10 @@ public abstract class NitroHotel {
         }
     }
 
+    public boolean isInitialFrame(final byte[] data) {
+        return true;
+    }
+
     /**
      * Retrieve a packet handler for this hotel.
      * @return Return a new instance of a packet handler, or null for the default packet handler.

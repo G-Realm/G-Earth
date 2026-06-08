@@ -65,9 +65,9 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
         final NitroNettySession serverSession = new NitroNettySession(server);
 
         // Setup nitro hotel.
-        if (this.nitroHotelManager.hasWebsocket(websocketUrl)) {
-            this.nitroHotel = this.nitroHotelManager.getByWebsocket(websocketUrl);
+        this.nitroHotel = this.nitroHotelManager.getByWebsocketOrNull(websocketUrl);
 
+        if (this.nitroHotel != null) {
             final NitroPacketModifier modifier = this.nitroHotel.createPacketModifier();
 
             if (modifier != null) {
@@ -81,6 +81,7 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
         } else {
             logger.info("Using default nitro configuration");
         }
+
         this.clientSessionProvider.setSession(clientSession);
         this.serverSessionProvider.setSession(serverSession);
 
