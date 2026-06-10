@@ -1,6 +1,9 @@
 package gearth.app.services.unity_tools;
 
 import gearth.app.misc.Cacher;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tukaani.xz.XZInputStream;
@@ -14,16 +17,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -200,7 +198,10 @@ public class UnityStandaloneLauncher {
 
     private File resolveInjector() {
         File cached = new File(cacheDir(), INJECTOR_NAME);
-        if (cached.isFile() && INJECTOR_SHA256.equalsIgnoreCase(sha256(cached))) return cached;
+        if (cached.isFile()) {
+            if (INJECTOR_SHA256.equalsIgnoreCase(sha256(cached))) return cached;
+            cached.delete();
+        }
         return downloadInjector(cached);
     }
 
@@ -215,21 +216,21 @@ public class UnityStandaloneLauncher {
             target.getParentFile().mkdirs();
             LOG.info("Downloading frida-inject {} (first run, ~19 MB)", FRIDA_VERSION);
 
-            HttpClient client = HttpClient.newBuilder()
-                    .followRedirects(HttpClient.Redirect.NORMAL)
-                    .connectTimeout(Duration.ofSeconds(30))
-                    .build();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(INJECTOR_URL)).GET().build();
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() != 200) {
-                LOG.error("frida-inject download failed, http {}", response.statusCode());
-                return null;
-            }
-
             File part = new File(target.getParentFile(), INJECTOR_NAME + ".part");
-            try (XZInputStream xz = new XZInputStream(response.body());
-                 OutputStream out = new FileOutputStream(part)) {
-                xz.transferTo(out);
+            try (CloseableHttpClient client = HttpClients.createDefault()) {
+                // we unpack inside the handler because the response stream is only valid until it returns
+                boolean ok = client.execute(new HttpGet(INJECTOR_URL), response -> {
+                    if (response.getCode() != 200) {
+                        LOG.error("frida-inject download failed, http {}", response.getCode());
+                        return false;
+                    }
+                    try (XZInputStream xz = new XZInputStream(response.getEntity().getContent());
+                         OutputStream out = new FileOutputStream(part)) {
+                        xz.transferTo(out);
+                    }
+                    return true;
+                });
+                if (!ok) return null;
             }
 
             String hash = sha256(part);

@@ -59,6 +59,7 @@ public class UnityPacketHandler extends PacketHandler {
         }
     }
 
+    /** runs a packet through the extensions and gives back our answer for the client which is if it is blocked and the final bytes */
     public Verdict interceptSync(byte[] buffer, long timeoutMs) {
         synchronized (actLock) {
             final HMessage hMessage = new HMessage(new HPacket(buffer), direction, currentIndex);
@@ -68,6 +69,7 @@ public class UnityPacketHandler extends PacketHandler {
         }
     }
 
+    /** client already sent this so extensions can only read it */
     public void reportOnly(byte[] buffer) {
         synchronized (actLock) {
             final HMessage hMessage = new HMessage(new HPacket(buffer), direction, currentIndex);

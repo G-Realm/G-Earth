@@ -26,11 +26,11 @@ public class UnityProxyProvider implements ProxyProvider, StateChangeListener {
     private final UnityWebsocketServer websocketServer;
     private final HttpProxyManager httpProxy;
     private final UnityStandaloneBridge standaloneBridge;
-    private final UnityStandaloneLauncher launcher = new UnityStandaloneLauncher();
+    private final UnityStandaloneLauncher launcher;
 
     private volatile Process clientProcess;
     private volatile Thread shutdownHook;
-    private final AtomicBoolean aborted = new AtomicBoolean(false);
+    private final AtomicBoolean aborted;
 
     public UnityProxyProvider(HProxySetter proxySetter, HStateSetter stateSetter, HConnection hConnection, UnityLaunchMode mode) {
         this.stateSetter = stateSetter;
@@ -39,6 +39,8 @@ public class UnityProxyProvider implements ProxyProvider, StateChangeListener {
         this.websocketServer = new UnityWebsocketServer(new UnityCommunicatorConfig(proxySetter, stateSetter, hConnection, this));
         this.httpProxy = new HttpProxyManager();
         this.standaloneBridge = new UnityStandaloneBridge(proxySetter, stateSetter, hConnection, this);
+        this.launcher = new UnityStandaloneLauncher();
+        this.aborted = new AtomicBoolean(false);
     }
 
     @Override
@@ -48,7 +50,7 @@ public class UnityProxyProvider implements ProxyProvider, StateChangeListener {
 
             // standalone is windows only, there is no linux client. TODO macos
             boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
-            if (mode != UnityLaunchMode.WEB && windows) {
+            if (mode == UnityLaunchMode.BUILD && windows) {
                 startStandalone();
                 return;
             }
@@ -82,7 +84,7 @@ public class UnityProxyProvider implements ProxyProvider, StateChangeListener {
     }
 
     private void startStandalone() {
-        if (!this.standaloneBridge.start()) {
+        if (!standaloneBridge.start()) {
             LOG.error("Failed to start unity standalone bridge");
             abort();
             return;
@@ -120,7 +122,7 @@ public class UnityProxyProvider implements ProxyProvider, StateChangeListener {
         new Thread(() -> {
             hConnection.getStateObservable().removeListener(this);
 
-            if (mode != UnityLaunchMode.WEB) {
+            if (mode == UnityLaunchMode.BUILD) {
                 LOG.info("Stopping unity standalone bridge");
                 standaloneBridge.stop();
 

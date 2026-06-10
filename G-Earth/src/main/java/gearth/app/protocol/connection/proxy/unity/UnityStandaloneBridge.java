@@ -29,6 +29,9 @@ class UnityStandaloneBridge {
     private static final int MAX_REVISION_LENGTH = 512;
     private static final int MAX_PACKET_LENGTH = 0x200000;
     private static final byte HANDSHAKE_MARKER = (byte) 0xFF;
+
+    // notify means the agent only lets extensions read the packet
+    // intercept means the client waits until we answer if it stays or gets changed
     private static final byte FRAME_NOTIFY = 0x00;
     private static final byte FRAME_INTERCEPT = 0x01;
     private static final byte DIR_TO_SERVER = 0x01;
@@ -194,6 +197,8 @@ class UnityStandaloneBridge {
 
     private static class TcpSession implements WebSession {
 
+        // what we send back to the agent
+        // verdict is our answer to an intercept and inject pushes a new packet into the client
         private static final byte TAG_VERDICT = 0x10;
         private static final byte TAG_INJECT = 0x20;
 

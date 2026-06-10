@@ -45,6 +45,7 @@ public abstract class PacketHandler {
         });
     }
 
+    /** runs the packet through the extensions and waits up to timeoutMs before giving back the handled message */
     protected HMessage manipulateSync(HMessage message, long timeoutMs) {
         notifyListeners(TrafficListener.BEFORE_MODIFICATION, message);
         notifyListeners(TrafficListener.MODIFICATION, message);
@@ -63,6 +64,7 @@ public abstract class PacketHandler {
         return result[0];
     }
 
+    /** sends the packet through the extensions without waiting and any change they make is not sent on */
     protected void manipulateAsync(HMessage message) {
         notifyListeners(TrafficListener.BEFORE_MODIFICATION, message);
         notifyListeners(TrafficListener.MODIFICATION, message);

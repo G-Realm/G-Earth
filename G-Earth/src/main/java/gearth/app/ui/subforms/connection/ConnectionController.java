@@ -263,11 +263,11 @@ public class ConnectionController extends SubForm {
             }
             else if (connectMode.equals("unity")) {
                 Platform.runLater(() -> rd_unity.setSelected(true));
-                getHConnection().startUnity(UnityLaunchMode.WEB);
+                new Thread(() -> getHConnection().startUnity(UnityLaunchMode.WEB), "unity-autoconnect").start();
             }
             else if (connectMode.equals("unity-build")) {
                 Platform.runLater(() -> rd_unity.setSelected(true));
-                getHConnection().startUnity(UnityLaunchMode.BUILD);
+                new Thread(() -> getHConnection().startUnity(UnityLaunchMode.BUILD), "unity-autoconnect").start();
             }
             else if (connectMode.equals("nitro")) {
                 Platform.runLater(() -> rd_nitro.setSelected(true));
