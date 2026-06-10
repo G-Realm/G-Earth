@@ -13,6 +13,12 @@ import gearth.app.protocol.packethandler.unity.UnityPacketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.jna.Library;
+import com.sun.jna.Memory;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.ptr.IntByReference;
+
 import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -118,6 +124,13 @@ class UnityStandaloneBridge {
 
     private void handleClient(Socket sock) {
         try {
+            // only the real habbo client may talk to the bridge no other local program
+            if (!isHabboClient(sock)) {
+                LOG.warn("Standalone bridge rejecting a connection that is not the habbo client");
+                sock.close();
+                return;
+            }
+
             DataInputStream in = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
             OutputStream rawOut = sock.getOutputStream();
 
@@ -193,6 +206,36 @@ class UnityStandaloneBridge {
             }
             if (running.get()) proxyProvider.abort();
         }
+    }
+
+    // check the connection comes from the real habbo client
+    private static boolean isHabboClient(Socket sock) {
+        try {
+            if (!System.getProperty("os.name", "").toLowerCase().contains("win")) return true;
+            Memory table = new Memory(64 * 1024);
+            IntByReference size = new IntByReference((int) table.size());
+            if (IpHlpApi.INSTANCE.GetExtendedTcpTable(table, size, true, 2, 5, 0) != 0) return true;
+            for (int i = 0, rows = table.getInt(0); i < rows; i++) {
+                long row = 4 + (long) i * 24;
+                if (port(table.getInt(row + 8)) == sock.getPort() && port(table.getInt(row + 16)) == sock.getLocalPort()) {
+                    return ProcessHandle.of(table.getInt(row + 20) & 0xFFFFFFFFL)
+                            .flatMap(handle -> handle.info().command())
+                            .map(command -> command.toLowerCase().contains("habbo2020-global-prod"))
+                            .orElse(true);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return true;
+    }
+
+    private static int port(int field) {
+        return ((field & 0xFF) << 8) | ((field >> 8) & 0xFF);
+    }
+
+    private interface IpHlpApi extends Library {
+        IpHlpApi INSTANCE = Native.load("iphlpapi", IpHlpApi.class);
+        int GetExtendedTcpTable(Pointer table, IntByReference size, boolean order, int af, int tableClass, int reserved);
     }
 
     private static class TcpSession implements WebSession {
