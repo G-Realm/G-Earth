@@ -8,6 +8,7 @@ import gearth.protocol.HPacket;
 import gearth.protocol.HPacketFormat;
 import gearth.app.protocol.connection.proxy.nitro.websocket.NitroWebsocketCallback;
 import gearth.app.protocol.connection.proxy.nitro.websocket.NitroWebsocketProxy;
+import gearth.app.services.nitro.NitroHotel;
 import gearth.app.services.nitro.NitroHotelManager;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -52,10 +53,6 @@ public class NitroHttpProxyIntercept extends HttpProxyInterceptInitializer {
         }
 
         return binaryData;
-    }
-
-    private boolean checkNitroHotelManager(final String websocketUrl) {
-        return this.nitroHotelManager.hasWebsocket(websocketUrl);
     }
 
     private boolean checkPacket(final String websocketUrl, final BinaryWebSocketFrame binaryFrame) {
@@ -132,7 +129,18 @@ public class NitroHttpProxyIntercept extends HttpProxyInterceptInitializer {
 
                     log.debug("Checking websocket url: {}", websocketUrl);
 
-                    if (!checkNitroHotelManager(websocketUrl) && !checkPacket(websocketUrl, (BinaryWebSocketFrame) webSocketFrame)) {
+                    final NitroHotel hotel = nitroHotelManager.getByWebsocketOrNull(websocketUrl);
+                    final boolean accept;
+
+                    if (hotel != null) {
+                        // Trusted exact-url hotel match.
+                        accept = hotel.isInitialFrame(getBinaryData((BinaryWebSocketFrame) webSocketFrame));
+                    } else {
+                        // No url match: fall back to generic nitro CLIENT_HELLO detection.
+                        accept = checkPacket(websocketUrl, (BinaryWebSocketFrame) webSocketFrame);
+                    }
+
+                    if (!accept) {
                         log.debug("websocket[{}] not a nitro hotel", websocketUrl);
                         return;
                     }

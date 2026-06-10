@@ -54,6 +54,14 @@ public class ExtensionHandler {
             }
         });
 
+        GEarth.getLanguageObservable().addListener(language -> {
+            synchronized (gEarthExtensions) {
+                for (GEarthExtension extension : gEarthExtensions) {
+                    extension.updateHostInfo(getHostInfo());
+                }
+            }
+        });
+
         hConnection.getStateObservable().addListener((oldState, newState) -> {
             if (newState == HState.CONNECTED) {
                 synchronized (gEarthExtensions) {
@@ -274,6 +282,7 @@ public class ExtensionHandler {
     private HostInfo getHostInfo() {
         HashMap<String, String> attributes = new HashMap<>();
         attributes.put("theme", GEarth.getTheme().title());
+        attributes.put("language", GEarth.getLanguageObservable().getObject().getLocale());
         return new HostInfo(
                 "G-Earth",
                 GEarth.version,

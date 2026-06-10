@@ -30,7 +30,16 @@ public abstract class ExtensionBase extends IExtension {
     ObservableObject<HostInfo> observableHostInfo = new ObservableObject<>(null);
 
     public void updateHostInfo(HostInfo hostInfo) {
+        String oldLanguage = getLanguage(observableHostInfo.getObject());
         observableHostInfo.setObject(hostInfo);
+        String newLanguage = getLanguage(hostInfo);
+        if (newLanguage != null && !newLanguage.equals(oldLanguage)) {
+            handleLanguageChange(newLanguage);
+        }
+    }
+
+    private static String getLanguage(HostInfo info) {
+        return info != null && info.getAttributes() != null ? info.getAttributes().get("language") : null;
     }
 
     /**
@@ -191,4 +200,11 @@ public abstract class ExtensionBase extends IExtension {
     public HostInfo getHostInfo() {
         return observableHostInfo.getObject();
     }
+
+    /**
+     * Called when the G-Earth language changes.
+     * Override this method to react to language changes.
+     * @param locale the new language locale code (e.g. "en", "fr", "de")
+     */
+    public void handleLanguageChange(String locale) {}
 }

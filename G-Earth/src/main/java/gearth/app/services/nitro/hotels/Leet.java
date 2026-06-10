@@ -6,12 +6,17 @@ import gearth.app.services.nitro.NitroPacketModifier;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.List;
 
-public class LeetNL extends NitroHotel {
+public class Leet extends NitroHotel {
 
-    public LeetNL() {
-        super("leet.city",
-                Collections.singletonList("wss://proxy.leet.city/*"),
+    private static final long MAX_TIMESTAMP_SKEW_SECONDS = 600;
+
+    public Leet() {
+        super("leet",
+                List.of("wss://proxy.leet.city/*",
+                        "wss://proxy.leethotel.biz/*",
+                        "wss://proxy.habblet.city/*"),
                 Collections.emptyList());
     }
 
@@ -22,6 +27,37 @@ public class LeetNL extends NitroHotel {
 
     @Override
     protected void loadAsset(String host, String uri, byte[] data) {
+    }
+
+    @Override
+    public boolean isInitialFrame(final byte[] data) {
+        if (data.length < 11) {
+            return false;
+        }
+
+        final ByteBuffer payload = ByteBuffer.wrap(data);
+
+        payload.getInt(); // magic
+        payload.get(); // requestType
+
+        final int textLen = payload.getShort();
+        if (data.length != 11 + textLen) {
+            return false;
+        }
+
+        final byte[] text = new byte[textLen];
+        payload.get(text);
+        for (int i = 0; i < textLen; i++) {
+            final int b = text[i] & 0xFF;
+            if (b < 0x20 || b > 0x7E) {
+                return false;
+            }
+        }
+
+        final long ts = payload.getInt();
+        final long now = System.currentTimeMillis() / 1000L;
+
+        return Math.abs(now - ts) <= MAX_TIMESTAMP_SKEW_SECONDS;
     }
 
     public static class LeetNLPacketModifier implements NitroPacketModifier {

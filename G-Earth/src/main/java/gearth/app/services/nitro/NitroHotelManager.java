@@ -1,13 +1,11 @@
 package gearth.app.services.nitro;
 
-import gearth.app.services.nitro.hotels.HabbletCity;
 import gearth.app.services.nitro.hotels.HabboCity;
 import gearth.app.services.nitro.hotels.HabboSK;
 import gearth.app.services.nitro.hotels.Hartico;
 import gearth.app.services.nitro.hotels.HubbeBiz;
 import gearth.app.services.nitro.hotels.HubbeSt;
-import gearth.app.services.nitro.hotels.LeetNL;
-import gearth.app.services.nitro.hotels.LeethotelBiz;
+import gearth.app.services.nitro.hotels.Leet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,9 +18,7 @@ public class NitroHotelManager {
         this.hotels = new ArrayList<>();
         this.hotels.add(new HabboCity());
         this.hotels.add(new Hartico());
-        this.hotels.add(new LeetNL());
-        this.hotels.add(new LeethotelBiz());
-        this.hotels.add(new HabbletCity());
+        this.hotels.add(new Leet());
         this.hotels.add(new HabboSK());
         this.hotels.add(new HubbeSt());
         this.hotels.add(new HubbeBiz());
@@ -34,19 +30,7 @@ public class NitroHotelManager {
         }
     }
 
-    public boolean hasWebsocket(String websocketUrl) {
-        websocketUrl = normalizeWebsocketUrl(websocketUrl);
-
-        for (NitroHotel hotel : hotels) {
-            if (hotel.hasWebsocket(websocketUrl)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public NitroHotel getByWebsocket(String websocketUrl) {
+    public NitroHotel getByWebsocketOrNull(String websocketUrl) {
         websocketUrl = normalizeWebsocketUrl(websocketUrl);
 
         for (NitroHotel hotel : hotels) {
@@ -55,7 +39,7 @@ public class NitroHotelManager {
             }
         }
 
-        throw new IllegalArgumentException("No hotel found for websocket url: " + websocketUrl);
+        return null;
     }
 
     private static String normalizeWebsocketUrl(String websocketUrl) {

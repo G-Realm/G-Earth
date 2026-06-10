@@ -27,6 +27,7 @@ public class ExtensionLoggerController implements Initializable {
         area.getStyleClass().add("themed-background");
         area.setWrapText(true);
         area.setEditable(false);
+        area.setUndoManager(null);
 
         VirtualizedScrollPane<StyleClassedTextArea> vsPane = new VirtualizedScrollPane<>(area);
         borderPane.setCenter(vsPane);
