@@ -37,6 +37,16 @@
     -fx-fill: cyan;
 }
 
+.replay {
+    -fx-fill: #cc6600;
+    -fx-font-weight: bold;
+}
+
+.copy {
+    -fx-fill: #1b7a1b;
+    -fx-font-weight: bold;
+}
+
 .dark {
     -fx-background-color: #000000;
 }

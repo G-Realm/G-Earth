@@ -34,10 +34,29 @@
                <accelerator>
                   <KeyCodeCombination alt="UP" code="O" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
                </accelerator></CheckMenuItem>
-            <CheckMenuItem fx:id="chkAutoscroll" mnemonicParsing="false" selected="true" text="Autoscroll">
-               <accelerator>
-                  <KeyCodeCombination alt="UP" code="L" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
-               </accelerator></CheckMenuItem>
+            <Menu fx:id="menu_view_autoscroll" mnemonicParsing="false" text="Autoscroll">
+              <items>
+                  <CheckMenuItem fx:id="chkAutoscroll" mnemonicParsing="false" selected="true" text="Enabled">
+                     <accelerator>
+                        <KeyCodeCombination alt="UP" code="L" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
+                     </accelerator></CheckMenuItem>
+                  <CheckMenuItem fx:id="chkPauseOnHover" mnemonicParsing="false" selected="true" text="Pause on hover" />
+              </items>
+            </Menu>
+            <CheckMenuItem fx:id="chkReplayButton" mnemonicParsing="false" selected="true" text="Replay" />
+            <Menu fx:id="menu_view_copy" mnemonicParsing="false" text="Copy">
+              <items>
+                  <CheckMenuItem fx:id="chkCopyButton" mnemonicParsing="false" selected="true" text="Show button" />
+                  <SeparatorMenuItem />
+                  <CheckMenuItem fx:id="chkCopyStructure" mnemonicParsing="false" selected="true" text="Structure" />
+                  <CheckMenuItem fx:id="chkCopyLegacy" mnemonicParsing="false" text="Packet" />
+                  <CheckMenuItem fx:id="chkCopyHex" mnemonicParsing="false" text="Hexdump" />
+                  <CheckMenuItem fx:id="chkCopyRawHex" mnemonicParsing="false" text="Raw hex" />
+                  <CheckMenuItem fx:id="chkCopyName" mnemonicParsing="false" text="Name" />
+                  <CheckMenuItem fx:id="chkCopyHash" mnemonicParsing="false" text="Hash" />
+                  <CheckMenuItem fx:id="chkCopyId" mnemonicParsing="false" text="Id" />
+              </items>
+            </Menu>
             <MenuItem fx:id="menuItem_clear" mnemonicParsing="false" onAction="#clearText" text="Clear text">
                <accelerator>
                   <KeyCodeCombination alt="UP" code="E" control="DOWN" meta="UP" shift="UP" shortcut="UP" />
@@ -129,6 +148,11 @@
            </FlowPane.margin>
        </Label>
          <Label fx:id="lblFiltered" layoutX="389.0" layoutY="11.0" style="-fx-text-fill: black !important" text="Filtered: 0" />
+         <Label fx:id="lblFeedback" text="">
+            <FlowPane.margin>
+               <Insets left="10.0" />
+            </FlowPane.margin>
+         </Label>
        </FlowPane>
    </bottom>
 </BorderPane>
