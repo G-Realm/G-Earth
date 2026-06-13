@@ -1,36 +1,66 @@
 package gearth.app.services.nitro.hotels;
 
 import gearth.app.protocol.connection.proxy.nitro.NitroPacketEvent;
+import gearth.app.services.nitro.NitroAsset;
 import gearth.app.services.nitro.NitroHotel;
 import gearth.app.services.nitro.NitroPacketModifier;
+import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 public class Leet extends NitroHotel {
 
     private static final long MAX_TIMESTAMP_SKEW_SECONDS = 600;
 
+    private final HashSet<String> socketUrls;
+
+    private boolean secureFrame;
+
     public Leet() {
         super("leet",
                 List.of("wss://proxy.leet.city/*",
                         "wss://proxy.leethotel.biz/*",
-                        "wss://proxy.habblet.city/*"),
-                Collections.emptyList());
+                        "wss://game.habblet.city/*"),
+                List.of(new NitroAsset("images.leet.city", "/leet-asset-bundles/config/renderer-config-new.json"),
+                        new NitroAsset("images.habblet.city", "/habblet-asset-bundles/config/renderer-config.json"),
+                        new NitroAsset("images.leethotel.biz", "/leet-asset-bundles/config/renderer-config.json")));
+
+        socketUrls = new HashSet<>();
     }
 
     @Override
     public NitroPacketModifier createPacketModifier() {
-        return new LeetNLPacketModifier();
+        if (this.secureFrame) {
+            return new LeetNLPacketModifier();
+        }
+
+        return null;
+    }
+
+    @Override
+    public boolean hasWebsocket(String websocketUrl) {
+        return socketUrls.contains(websocketUrl);
     }
 
     @Override
     protected void loadAsset(String host, String uri, byte[] data) {
+        final String jsonData = new String(data);
+        final JSONObject jsonObject = new JSONObject(jsonData);
+
+        if (jsonObject.has("socket.url")) {
+            socketUrls.add(jsonObject.getString("socket.url"));
+        }
     }
 
     @Override
     public boolean isInitialFrame(final byte[] data) {
+        this.secureFrame = isSecureFrame(data);
+        return true;
+    }
+
+    private boolean isSecureFrame(final byte[] data) {
         if (data.length < 11) {
             return false;
         }
