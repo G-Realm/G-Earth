@@ -95,7 +95,7 @@ public class UnityProxyProvider implements ProxyProvider, StateChangeListener {
 
         stateSetter.setState(HState.WAITING_FOR_CLIENT);
 
-        Optional<Process> process = launcher.connect(bridgePort);
+        Optional<Process> process = launcher.connect(bridgePort, standaloneBridge.cookie());
         if (process.isEmpty()) {
             LOG.error("Failed to start the Habbo Unity standalone client");
             abort();

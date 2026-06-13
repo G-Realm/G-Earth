@@ -13,19 +13,17 @@ const TAG_VERDICT = 0x10;
 const TAG_INJECT = 0x20;
 const MAX_HEADER = 4000;
 
-// bridge port from env, default 9399
-function readBridgePort(): number {
-  try {
-    const kernel32 = Module.load("kernel32.dll");
-    const getEnvVar = new NativeFunction(kernel32.getExportByName("GetEnvironmentVariableA"), "uint32", ["pointer", "pointer", "uint32"]);
-    const varName = Memory.allocUtf8String("GEARTH_BRIDGE_PORT");
-    const buffer = Memory.alloc(16);
-    const written = (getEnvVar(varName, buffer, 16) as number);
-    if (written > 0 && written < 16) { const value = parseInt(buffer.readUtf8String()!, 10); if (value > 0 && value < 65536) return value; }
-  } catch (e) {}
-  return 9399;
-}
-const bridgePort = readBridgePort();
+// port and cookie come from frida-inject -P through rpc.exports.init
+let bridgeport = 9399;
+let cookie = "";
+rpc.exports = {
+  init(stage: string, params: any): void {
+    if (params) {
+      if (params.port) bridgeport = params.port;
+      if (params.cookie) cookie = params.cookie;
+    }
+  },
+};
 const CLIENT_VERSION = "UNITY20";
 
 // raw socket, fridas Socket api is async but the hooks run sync
@@ -59,26 +57,24 @@ function connectBridge(revision: string, host: string): boolean {
   if (sock === INVALID_SOCKET) return false;
   const addr = Memory.alloc(16);
   addr.writeU16(2);
-  addr.add(2).writeU16(htons(bridgePort) as number);
+  addr.add(2).writeU16(htons(bridgeport) as number);
   addr.add(4).writeU32(0x0100007f);
   if ((connectSocket(sock, addr, 16) as number) !== 0) { closeSocket(sock); return false; }
   bridgeSocket = sock;
   const recvTimeout = Memory.alloc(4); recvTimeout.writeU32(2000);
   setSockOpt(sock, 0xffff, 0x1006, recvTimeout, 4);
-  const revisionBytes = Memory.allocUtf8String(revision);
-  const revisionLength = revision.length;
-  const header = Memory.alloc(5);
-  header.writeU8(0xff); header.add(1).writeU8((revisionLength >> 24) & 0xff); header.add(2).writeU8((revisionLength >> 16) & 0xff);
-  header.add(3).writeU8((revisionLength >> 8) & 0xff); header.add(4).writeU8(revisionLength & 0xff);
-  sendAll(header, 5); sendAll(revisionBytes, revisionLength);
-  const hostBytes = Memory.allocUtf8String(host);
-  const hostLength = host.length;
-  const hostHeader = Memory.alloc(4);
-  hostHeader.writeU8((hostLength >> 24) & 0xff); hostHeader.add(1).writeU8((hostLength >> 16) & 0xff);
-  hostHeader.add(2).writeU8((hostLength >> 8) & 0xff); hostHeader.add(3).writeU8(hostLength & 0xff);
-  sendAll(hostHeader, 4); if (hostLength > 0) sendAll(hostBytes, hostLength);
+  const marker = Memory.alloc(1); marker.writeU8(0xff);
+  if (!sendAll(marker, 1) || !sendstr(cookie) || !sendstr(revision) || !sendstr(host)) { closeSocket(sock); bridgeSocket = INVALID_SOCKET; return false; }
   bridgeReady = true;
   return true;
+}
+function sendstr(text: string): boolean {
+  const bytes = Memory.allocUtf8String(text);
+  const len = text.length;
+  const head = Memory.alloc(4);
+  head.writeU8((len >> 24) & 0xff); head.add(1).writeU8((len >> 16) & 0xff); head.add(2).writeU8((len >> 8) & 0xff); head.add(3).writeU8(len & 0xff);
+  if (!sendAll(head, 4)) return false;
+  return len > 0 ? sendAll(bytes, len) : true;
 }
 function sendAll(buffer: NativePointer, len: number): boolean { let sent = 0; while (sent < len) { const written = (socketSend(bridgeSocket, buffer.add(sent), len - sent, 0) as number); if (written <= 0) { bridgeReady = false; return false; } sent += written; } return true; }
 function recvAll(buffer: NativePointer, len: number): boolean { let received = 0; while (received < len) { const chunk = (socketRecv(bridgeSocket, buffer.add(received), len - received, 0) as number); if (chunk <= 0) return false; received += chunk; } return true; }
@@ -463,7 +459,7 @@ function discover() {
 
 const AGENT_VERSION = "unity-standalone 1.0";
 function main(): void {
-  log("[agent] " + AGENT_VERSION + " loaded, bridge port " + bridgePort);
+  log("[agent] " + AGENT_VERSION + " loaded, bridge port " + bridgeport);
 
   try { const fn = winsock.getExportByName("WSACleanup"); if (fn) Interceptor.attach(fn, { onEnter() { teardown("WSACleanup"); } }); } catch (e) {}
   try { const fn = Il2Cpp.module.getExportByName("il2cpp_shutdown"); if (fn) Interceptor.attach(fn, { onEnter() { teardown("il2cpp_shutdown"); } }); } catch (e) {}

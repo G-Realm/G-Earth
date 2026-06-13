@@ -13,17 +13,12 @@ import gearth.app.protocol.packethandler.unity.UnityPacketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.jna.Library;
-import com.sun.jna.Memory;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 class UnityStandaloneBridge {
@@ -51,6 +46,7 @@ class UnityStandaloneBridge {
     private volatile Socket clientSocket;
     private volatile int port = -1;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final String cookie = newcookie();
 
     UnityStandaloneBridge(HProxySetter proxySetter, HStateSetter stateSetter,
                           HConnection hConnection, ProxyProvider proxyProvider) {
@@ -85,6 +81,18 @@ class UnityStandaloneBridge {
 
     int getPort() {
         return port;
+    }
+
+    String cookie() {
+        return cookie;
+    }
+
+    private static String newcookie() {
+        byte[] raw = new byte[16];
+        new SecureRandom().nextBytes(raw);
+        StringBuilder text = new StringBuilder();
+        for (byte b : raw) text.append(String.format("%02x", b));
+        return text.toString();
     }
 
     void stop() {
@@ -124,19 +132,25 @@ class UnityStandaloneBridge {
 
     private void handleClient(Socket sock) {
         try {
-            // only the real habbo client may talk to the bridge no other local program
-            if (!isHabboClient(sock)) {
-                LOG.warn("Standalone bridge rejecting a connection that is not the habbo client");
-                sock.close();
-                return;
-            }
-
             DataInputStream in = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
             OutputStream rawOut = sock.getOutputStream();
 
             byte marker = in.readByte();
             if (marker != HANDSHAKE_MARKER) {
                 LOG.warn("Standalone bridge: unexpected handshake byte 0x{}", Integer.toHexString(marker & 0xFF));
+                sock.close();
+                return;
+            }
+
+            int cookieLen = in.readInt();
+            if (cookieLen <= 0 || cookieLen > 128) {
+                sock.close();
+                return;
+            }
+            byte[] cookieBytes = new byte[cookieLen];
+            in.readFully(cookieBytes);
+            if (!cookie.equals(new String(cookieBytes, StandardCharsets.UTF_8))) {
+                LOG.warn("rejected wrong cookie");
                 sock.close();
                 return;
             }
@@ -206,36 +220,6 @@ class UnityStandaloneBridge {
             }
             if (running.get()) proxyProvider.abort();
         }
-    }
-
-    // check the connection comes from the real habbo client
-    private static boolean isHabboClient(Socket sock) {
-        try {
-            if (!System.getProperty("os.name", "").toLowerCase().contains("win")) return true;
-            Memory table = new Memory(64 * 1024);
-            IntByReference size = new IntByReference((int) table.size());
-            if (IpHlpApi.INSTANCE.GetExtendedTcpTable(table, size, true, 2, 5, 0) != 0) return true;
-            for (int i = 0, rows = table.getInt(0); i < rows; i++) {
-                long row = 4 + (long) i * 24;
-                if (port(table.getInt(row + 8)) == sock.getPort() && port(table.getInt(row + 16)) == sock.getLocalPort()) {
-                    return ProcessHandle.of(table.getInt(row + 20) & 0xFFFFFFFFL)
-                            .flatMap(handle -> handle.info().command())
-                            .map(command -> command.toLowerCase().contains("habbo2020-global-prod"))
-                            .orElse(true);
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return true;
-    }
-
-    private static int port(int field) {
-        return ((field & 0xFF) << 8) | ((field >> 8) & 0xFF);
-    }
-
-    private interface IpHlpApi extends Library {
-        IpHlpApi INSTANCE = Native.load("iphlpapi", IpHlpApi.class);
-        int GetExtendedTcpTable(Pointer table, IntByReference size, boolean order, int af, int tableClass, int reserved);
     }
 
     private static class TcpSession implements WebSession {

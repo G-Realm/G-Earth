@@ -50,10 +50,10 @@ public class UnityStandaloneLauncher {
     private final List<FileLock> claimLocks = new ArrayList<>();
 
     // attach to a free running client, else spawn one
-    public Optional<Process> connect(int bridgePort) {
+    public Optional<Process> connect(int bridgeport, String cookie) {
         for (long pid : findRunningClients()) {
             if (claim(pid)) {
-                Optional<Process> attached = run(new String[]{"-p", Long.toString(pid)}, bridgePort, "attaching to running pid " + pid, null);
+                Optional<Process> attached = run(new String[]{"-p", Long.toString(pid)}, bridgeport, cookie, "attaching to running pid " + pid, null);
                 if (attached.isPresent()) return attached;
                 release();
             }
@@ -66,7 +66,7 @@ public class UnityStandaloneLauncher {
         }
 
         Set<Long> before = new HashSet<>(findRunningClients());
-        Optional<Process> spawned = run(new String[]{"-f", clientExe.get().toAbsolutePath().toString()}, bridgePort, "spawning " + clientExe.get(), clientExe.get().getParent().toFile());
+        Optional<Process> spawned = run(new String[]{"-f", clientExe.get().toAbsolutePath().toString()}, bridgeport, cookie, "spawning " + clientExe.get(), clientExe.get().getParent().toFile());
         if (spawned.isPresent()) claimSpawned(before);
         return spawned;
     }
@@ -118,7 +118,7 @@ public class UnityStandaloneLauncher {
                 .collect(Collectors.toList());
     }
 
-    private Optional<Process> run(String[] target, int bridgePort, String what, File workingDir) {
+    private Optional<Process> run(String[] target, int bridgeport, String cookie, String what, File workingDir) {
         File agent = resolveAgent();
         if (agent == null) {
             LOG.error("agent.js could not be extracted");
@@ -133,6 +133,8 @@ public class UnityStandaloneLauncher {
 
         try {
             LOG.info("Habbo Unity standalone: {}", what);
+            // port and cookie go to the agent over frida-inject -P
+            String params = "{\"port\":" + bridgeport + ",\"cookie\":\"" + cookie + "\"}";
             List<String> command = new ArrayList<>();
             command.add(injector.getAbsolutePath());
             command.addAll(Arrays.asList(target));
@@ -140,10 +142,11 @@ public class UnityStandaloneLauncher {
             command.add(agent.getAbsolutePath());
             command.add("-R");
             command.add("v8");
+            command.add("-P");
+            command.add(params.replace("\"", "\\\""));
 
             ProcessBuilder builder = new ProcessBuilder(command);
             if (workingDir != null) builder.directory(workingDir);
-            builder.environment().put("GEARTH_BRIDGE_PORT", Integer.toString(bridgePort));
             builder.redirectErrorStream(true);
             Process process = builder.start();
 
