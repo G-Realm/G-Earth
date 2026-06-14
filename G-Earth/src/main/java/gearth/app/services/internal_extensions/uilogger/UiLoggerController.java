@@ -82,6 +82,7 @@ public class UiLoggerController implements Initializable {
 
     private int filteredAmount = 0;
 
+    private long lastMouseReleaseTime = 0;
     private volatile boolean initialized = false;
     private final List<Element> appendLater = new ArrayList<>();
 
@@ -162,6 +163,7 @@ public class UiLoggerController implements Initializable {
         area.getStyleClass().add("dark");
         area.setWrapText(true);
         area.setUndoManager(null);
+        area.setOnMouseReleased(e -> lastMouseReleaseTime = System.currentTimeMillis());
 
         VirtualizedScrollPane<StyleClassedTextArea> vsPane = new VirtualizedScrollPane<>(area);
         borderPane.setCenter(vsPane);
@@ -358,11 +360,35 @@ public class UiLoggerController implements Initializable {
             }
 
             int oldLen = area.getLength();
+            
+            int anchor = area.getAnchor();
+            int caret = area.getCaretPosition();
+            boolean hasSelection = anchor != caret;
 
-            area.appendText(sb.toString());
+            area.replaceText(oldLen, oldLen, sb.toString());
             area.setStyleSpans(oldLen, styleSpansBuilder.create());
 
-            if (chkAutoscroll.isSelected()) {
+            if (hasSelection) {
+                area.selectRange(anchor, caret);
+                
+                final int savedAnchor = anchor;
+                Platform.runLater(() -> {
+                    if (area.getAnchor() == savedAnchor) {
+                        int currentCaret = area.getCaretPosition();
+                        area.deselect();
+                        area.selectRange(savedAnchor, currentCaret);
+                    }
+                });
+            } else {
+                area.moveTo(caret);
+            }
+
+            boolean isMouseHeld = area.isPressed();
+            boolean isGracePeriod = System.currentTimeMillis() - lastMouseReleaseTime < 500;
+            boolean isUserSelecting = hasSelection || isMouseHeld || isGracePeriod;
+
+            if (chkAutoscroll.isSelected() && !isUserSelecting) {
+                area.moveTo(area.getLength());
                 area.requestFollowCaret();
             }
         });
