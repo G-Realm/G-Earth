@@ -38,7 +38,6 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
     private final AtomicBoolean shutdownLock;
     private final AtomicBoolean isAborting;
 
-    private NitroHotel nitroHotel;
     private NitroPacketModifier packetModifier;
     private boolean isHandshakeComplete;
 
@@ -65,10 +64,11 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
         final NitroNettySession serverSession = new NitroNettySession(server);
 
         // Setup nitro hotel.
-        this.nitroHotel = this.nitroHotelManager.getByWebsocketOrNull(websocketUrl);
+        final String normalizedWebsocketUrl = NitroHotelManager.normalizeWebsocketUrl(websocketUrl);
+        final NitroHotel nitroHotel = this.nitroHotelManager.getByWebsocketOrNull(normalizedWebsocketUrl);
 
-        if (this.nitroHotel != null) {
-            final NitroPacketModifier modifier = this.nitroHotel.createPacketModifier();
+        if (nitroHotel != null) {
+            final NitroPacketModifier modifier = nitroHotel.createPacketModifier(normalizedWebsocketUrl);
 
             if (modifier != null) {
                 this.packetModifier = modifier;
@@ -77,7 +77,7 @@ public class NitroWebsocketHandler implements NitroWebsocketCallback, StateChang
                 serverSession.setModifier(data -> this.packetModifier.gearthToServer(data));
             }
 
-            logger.info("Detected hotel as {}, using a custom nitro configuration", this.nitroHotel.getName());
+            logger.info("Detected hotel as {}, using a custom nitro configuration", nitroHotel.getName());
         } else {
             logger.info("Using default nitro configuration");
         }

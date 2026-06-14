@@ -29,7 +29,7 @@ public class HabboSK extends NitroHotel {
     }
 
     @Override
-    public NitroPacketModifier createPacketModifier() {
+    public NitroPacketModifier createPacketModifier(String websocketUrl) {
         return new HabboSKPacketModifier();
     }
 
