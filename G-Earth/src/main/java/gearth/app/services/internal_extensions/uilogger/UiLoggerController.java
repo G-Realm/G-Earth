@@ -365,7 +365,7 @@ public class UiLoggerController implements Initializable {
             int caret = area.getCaretPosition();
             boolean hasSelection = anchor != caret;
 
-            area.replaceText(oldLen, oldLen, sb.toString());
+            area.appendText(sb.toString());
             area.setStyleSpans(oldLen, styleSpansBuilder.create());
 
             if (hasSelection) {
