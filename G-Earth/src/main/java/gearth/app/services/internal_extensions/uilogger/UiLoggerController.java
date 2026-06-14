@@ -47,7 +47,6 @@ public class UiLoggerController implements Initializable {
     public CheckMenuItem chkDisplayStructure;
     public Label lblAutoScroll;
     public CheckMenuItem chkAutoscroll;
-    public CheckMenuItem chkReplayButton;
     public CheckMenuItem chkCopyButton;
     public CheckMenuItem chkPauseOnHover;
     public CheckMenuItem chkCopyStructure;
@@ -166,7 +165,7 @@ public class UiLoggerController implements Initializable {
                 chkOpenOnConnect, chkResetOnConnect, chkHideOnDisconnect, chkResetOnDisconnect,
                 chkAntiSpam_none, chkAntiSpam_low, chkAntiSpam_medium, chkAntiSpam_high, chkAntiSpam_ultra,
                 chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex,
-                chkReplayButton, chkCopyButton, chkPauseOnHover,
+                chkCopyButton, chkPauseOnHover,
                 chkCopyStructure, chkCopyLegacy, chkCopyHex, chkCopyRawHex,
                 chkCopyName, chkCopyHash, chkCopyId
         ));
@@ -192,7 +191,7 @@ public class UiLoggerController implements Initializable {
             mouseOverArea = false;
             if (chkAutoscroll.isSelected()) area.requestFollowCaret();
         });
-        area.addEventFilter(MouseEvent.MOUSE_CLICKED, this::onAreaClicked);
+        area.addEventFilter(MouseEvent.MOUSE_CLICKED, e -> onAreaClicked(e));
         feedbackTimer.setOnFinished(e -> lblFeedback.setText(""));
         area.plainTextChanges().subscribe(change -> {
             int pos = change.getPosition();
@@ -286,7 +285,7 @@ public class UiLoggerController implements Initializable {
         boolean reprRawHex = chkReprRawHex.isSelected();
         boolean isSkipped = (reprLegacy || reprHex || reprRawHex) && chkSkipBigPackets.isSelected()
                 && (packet.length() > 4000 || (packet.length() > 1000 && reprHex));
-        boolean showControls = (chkReplayButton.isSelected() || chkCopyButton.isSelected()) && !isSkipped;
+        boolean showControls = chkCopyButton.isSelected() && !isSkipped;
         byte[] controlBytes = showControls ? packet.toBytes() : null;
         HMessage.Direction controlDirection = isIncoming ? HMessage.Direction.TOCLIENT : HMessage.Direction.TOSERVER;
         boolean controlsPlaced = false;
@@ -420,7 +419,7 @@ public class UiLoggerController implements Initializable {
                 if (element instanceof ControlElement) {
                     ControlElement control = (ControlElement) element;
                     int start = oldLen + sb.length();
-                    newControls.add(new LogControl(start, start + control.text.length(), control.kind, control.packetBytes, control.direction));
+                    newControls.add(new LogControl(start, start + control.text.length(), control.packetBytes, control.direction));
                 }
 
                 sb.append(element.text);
@@ -452,20 +451,10 @@ public class UiLoggerController implements Initializable {
     }
 
     private void fireControl(LogControl control) {
-        if ("replay".equals(control.kind)) {
-            HPacket packet = new HPacket(control.bytes);
-            if (control.direction == HMessage.Direction.TOCLIENT) {
-                uiLogger.sendToClient(packet);
-            } else {
-                uiLogger.sendToServer(packet);
-            }
-            showFeedback("replayed to " + (control.direction == HMessage.Direction.TOCLIENT ? "client" : "server"), "#cc6600");
-        } else {
-            ClipboardContent content = new ClipboardContent();
-            content.putString(copyTextFor(control));
-            Clipboard.getSystemClipboard().setContent(content);
-            showFeedback("copied", "#1b7a1b");
-        }
+        ClipboardContent content = new ClipboardContent();
+        content.putString(copyTextFor(control));
+        Clipboard.getSystemClipboard().setContent(content);
+        showFeedback("copied", "#1b7a1b");
     }
 
     private String copyTextFor(LogControl control) {
@@ -505,26 +494,20 @@ public class UiLoggerController implements Initializable {
     }
 
     private void addControlTokens(List<Element> elements, byte[] bytes, HMessage.Direction direction) {
-        if (chkReplayButton.isSelected()) {
-            elements.add(new ControlElement("replay", "[Replay]", bytes, direction));
-            elements.add(new Element(" ", ""));
-        }
         if (chkCopyButton.isSelected()) {
-            elements.add(new ControlElement("copy", "[Copy]", bytes, direction));
+            elements.add(new ControlElement("[Copy]", bytes, direction));
             elements.add(new Element(" ", ""));
         }
     }
 
     private static class LogControl {
         int start, end;
-        final String kind;
         final byte[] bytes;
         final HMessage.Direction direction;
 
-        LogControl(int start, int end, String kind, byte[] bytes, HMessage.Direction direction) {
+        LogControl(int start, int end, byte[] bytes, HMessage.Direction direction) {
             this.start = start;
             this.end = end;
-            this.kind = kind;
             this.bytes = bytes;
             this.direction = direction;
         }

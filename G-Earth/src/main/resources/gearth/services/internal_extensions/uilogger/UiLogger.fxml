@@ -43,7 +43,6 @@
                   <CheckMenuItem fx:id="chkPauseOnHover" mnemonicParsing="false" selected="true" text="Pause on hover" />
               </items>
             </Menu>
-            <CheckMenuItem fx:id="chkReplayButton" mnemonicParsing="false" selected="true" text="Replay" />
             <Menu fx:id="menu_view_copy" mnemonicParsing="false" text="Copy">
               <items>
                   <CheckMenuItem fx:id="chkCopyButton" mnemonicParsing="false" selected="true" text="Show button" />
