@@ -12,6 +12,7 @@ import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.Initializable;
+import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -26,7 +27,7 @@ import org.bouncycastle.util.encoders.Hex;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CharacterHit;
 import org.fxmisc.richtext.StyleClassedTextArea;
-import org.fxmisc.richtext.model.StyleSpansBuilder;
+import org.fxmisc.richtext.model.ReadOnlyStyledDocument;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -59,7 +60,6 @@ public class UiLoggerController implements Initializable {
     public CheckMenuItem chkCopyName;
     public CheckMenuItem chkCopyHash;
     public CheckMenuItem chkCopyId;
-    public Label lblFeedback;
     public CheckMenuItem chkSkipBigPackets;
     public CheckMenuItem chkMessageName;
     public CheckMenuItem chkMessageHash;
@@ -96,7 +96,9 @@ public class UiLoggerController implements Initializable {
     private StyleClassedTextArea area;
     private final List<LogControl> controls = new ArrayList<>();
     private volatile boolean mouseOverArea = false;
-    private final PauseTransition feedbackTimer = new PauseTransition(Duration.seconds(1.6));
+    private LogControl pressedControl;
+    private int pressIndex;
+    private boolean dragged;
 
     private Stage stage;
 
@@ -189,13 +191,44 @@ public class UiLoggerController implements Initializable {
         VirtualizedScrollPane<StyleClassedTextArea> vsPane = new VirtualizedScrollPane<>(area);
         borderPane.setCenter(vsPane);
 
-        area.setOnMouseEntered(e -> mouseOverArea = true);
-        area.setOnMouseExited(e -> {
-            mouseOverArea = false;
-            if (chkAutoscroll.isSelected()) area.requestFollowCaret();
+        borderPane.hoverProperty().addListener((obs, was, hovering) -> {
+            mouseOverArea = hovering;
+            if (!hovering && shouldAutoscroll()) scrollToBottom();
         });
-        area.addEventFilter(MouseEvent.MOUSE_CLICKED, e -> onAreaClicked(e));
-        feedbackTimer.setOnFinished(e -> lblFeedback.setText(""));
+        area.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            pressedControl = null;
+            dragged = false;
+            if (e.getButton() != MouseButton.PRIMARY) return;
+            CharacterHit hit = area.hit(e.getX(), e.getY());
+            if (!hit.getCharacterIndex().isPresent()) return;
+            LogControl control = controlAt(hit.getCharacterIndex().getAsInt());
+            if (control != null) {
+                pressedControl = control;
+                pressIndex = hit.getInsertionIndex();
+                e.consume();
+            }
+        });
+        area.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
+            if (pressedControl == null) return;
+            int current = area.hit(e.getX(), e.getY()).getInsertionIndex();
+            if (current != pressIndex) {
+                dragged = true;
+                area.selectRange(pressIndex, current);
+            }
+            e.consume();
+        });
+        area.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            LogControl control = pressedControl;
+            pressedControl = null;
+            if (control == null || e.getButton() != MouseButton.PRIMARY) return;
+            if (!dragged) fireControl(control);
+            e.consume();
+        });
+        area.setOnMouseMoved(e -> {
+            CharacterHit hit = area.hit(e.getX(), e.getY());
+            boolean overToken = hit.getCharacterIndex().isPresent() && controlAt(hit.getCharacterIndex().getAsInt()) != null;
+            area.setCursor(overToken ? Cursor.HAND : Cursor.TEXT);
+        });
         area.plainTextChanges().subscribe(change -> {
             int pos = change.getPosition();
             int removed = change.getRemoved().length();
@@ -412,52 +445,55 @@ public class UiLoggerController implements Initializable {
 
     private synchronized void appendLog(List<Element> elements) {
         Platform.runLater(() -> {
-            StringBuilder sb = new StringBuilder();
-            StyleSpansBuilder<Collection<String>> styleSpansBuilder = new StyleSpansBuilder<>(0);
-
             int oldLen = area.getLength();
             List<LogControl> newControls = new ArrayList<>();
+            ReadOnlyStyledDocument<Collection<String>, String, Collection<String>> doc = null;
 
             for (Element element : elements) {
                 if (element instanceof ControlElement) {
                     ControlElement control = (ControlElement) element;
-                    int start = oldLen + sb.length();
+                    int start = oldLen + (doc == null ? 0 : doc.length());
                     newControls.add(new LogControl(start, start + control.text.length(), control.packetBytes, control.direction));
                 }
 
-                sb.append(element.text);
-                styleSpansBuilder.add(Collections.singleton(element.className), element.text.length());
+                ReadOnlyStyledDocument<Collection<String>, String, Collection<String>> part =
+                        ReadOnlyStyledDocument.fromString(element.text, Collections.<String>emptyList(),
+                                Collections.singleton(element.className), area.getSegOps());
+                doc = (doc == null) ? part : doc.concat(part);
             }
 
-            area.appendText(sb.toString());
-            area.setStyleSpans(oldLen, styleSpansBuilder.create());
+            if (doc == null) return;
+
+            area.getContent().replace(oldLen, oldLen, doc);
             controls.addAll(newControls);
 
-            if (chkAutoscroll.isSelected() && !(chkPauseOnHover.isSelected() && mouseOverArea)) {
-                area.requestFollowCaret();
-            }
+            if (shouldAutoscroll()) scrollToBottom();
         });
     }
 
-    private void onAreaClicked(MouseEvent event) {
-        if (event.getButton() != MouseButton.PRIMARY) return;
-        CharacterHit hit = area.hit(event.getX(), event.getY());
-        if (!hit.getCharacterIndex().isPresent()) return;
-        int idx = hit.getCharacterIndex().getAsInt();
+    private boolean shouldAutoscroll() {
+        return chkAutoscroll.isSelected()
+                && area.getSelection().getLength() == 0
+                && !(chkPauseOnHover.isSelected() && mouseOverArea);
+    }
+
+    private void scrollToBottom() {
+        int last = area.getParagraphs().size() - 1;
+        if (last >= 0) area.showParagraphAtBottom(last);
+    }
+
+    private LogControl controlAt(int idx) {
         for (LogControl control : controls) {
-            if (idx >= control.start && idx < control.end) {
-                fireControl(control);
-                event.consume();
-                return;
-            }
+            if (idx >= control.start && idx < control.end) return control;
         }
+        return null;
     }
 
     private void fireControl(LogControl control) {
         ClipboardContent content = new ClipboardContent();
         content.putString(copyTextFor(control));
         Clipboard.getSystemClipboard().setContent(content);
-        showFeedback("copied", "#1b7a1b");
+        highlightCopied(control.start, control.end);
     }
 
     private String copyTextFor(LogControl control) {
@@ -490,10 +526,18 @@ public class UiLoggerController implements Initializable {
         return String.join("\n", parts);
     }
 
-    private void showFeedback(String text, String colorHex) {
-        lblFeedback.setText(text);
-        lblFeedback.setStyle("-fx-text-fill: " + colorHex + " !important");
-        feedbackTimer.playFromStart();
+    private void highlightCopied(int start, int end) {
+        if (start >= end) return;
+        setTokenStyle(start, end, "copy", "copied");
+        PauseTransition reset = new PauseTransition(Duration.millis(450));
+        reset.setOnFinished(e -> setTokenStyle(start, end, "copy"));
+        reset.play();
+    }
+
+    private void setTokenStyle(int start, int end, String... styleClasses) {
+        if (start < end && end <= area.getLength()) {
+            area.setStyle(start, end, Arrays.asList(styleClasses));
+        }
     }
 
     private void addControlTokens(List<Element> elements, byte[] bytes, HMessage.Direction direction) {
