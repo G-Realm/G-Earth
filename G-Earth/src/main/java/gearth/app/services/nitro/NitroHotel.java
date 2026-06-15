@@ -18,6 +18,10 @@ public abstract class NitroHotel {
         return name;
     }
 
+    public boolean skipWebsocket(String websocketUrl) {
+        return false;
+    }
+
     public boolean hasWebsocket(final String websocketUrl) {
         for (final String url : websocketUrls) {
             if (url.endsWith("*")) {
@@ -42,7 +46,7 @@ public abstract class NitroHotel {
         }
     }
 
-    public boolean isInitialFrame(final byte[] data) {
+    public boolean isInitialFrame(String websocketUrl, final byte[] data) {
         return true;
     }
 
@@ -50,7 +54,7 @@ public abstract class NitroHotel {
      * Retrieve a packet handler for this hotel.
      * @return Return a new instance of a packet handler, or null for the default packet handler.
      */
-    public abstract NitroPacketModifier createPacketModifier();
+    public abstract NitroPacketModifier createPacketModifier(String websocketUrl);
 
     /**
      * Proxy loaded an asset for this hotel.

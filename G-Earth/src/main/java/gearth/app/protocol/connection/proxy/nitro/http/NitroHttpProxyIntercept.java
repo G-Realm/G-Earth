@@ -126,15 +126,23 @@ public class NitroHttpProxyIntercept extends HttpProxyInterceptInitializer {
 
                     // Obtain url.
                     final String websocketUrl = pipeline.getRequestProto().getWebsocketUrl();
+                    final String normalizedWebsocketUrl = NitroHotelManager.normalizeWebsocketUrl(websocketUrl);
 
                     log.debug("Checking websocket url: {}", websocketUrl);
 
-                    final NitroHotel hotel = nitroHotelManager.getByWebsocketOrNull(websocketUrl);
+                    final NitroHotel hotel = nitroHotelManager.getByWebsocketOrNull(normalizedWebsocketUrl);
                     final boolean accept;
 
                     if (hotel != null) {
+                        log.debug("websocket[{}] matched hotel {}", websocketUrl, hotel.getName());
+
+                        if (hotel.skipWebsocket(normalizedWebsocketUrl)) {
+                            log.debug("websocket[{}] skipped by hotel configuration", websocketUrl);
+                            return;
+                        }
+
                         // Trusted exact-url hotel match.
-                        accept = hotel.isInitialFrame(getBinaryData((BinaryWebSocketFrame) webSocketFrame));
+                        accept = hotel.isInitialFrame(normalizedWebsocketUrl, getBinaryData((BinaryWebSocketFrame) webSocketFrame));
                     } else {
                         // No url match: fall back to generic nitro CLIENT_HELLO detection.
                         accept = checkPacket(websocketUrl, (BinaryWebSocketFrame) webSocketFrame);

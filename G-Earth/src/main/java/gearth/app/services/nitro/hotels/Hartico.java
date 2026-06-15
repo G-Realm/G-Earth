@@ -29,7 +29,7 @@ public class Hartico extends NitroHotel {
     }
 
     @Override
-    public NitroPacketModifier createPacketModifier() {
+    public NitroPacketModifier createPacketModifier(String websocketUrl) {
         if (tripleDesKey == null) {
             throw new IllegalStateException("Failed to create packet modifier, keys not initialized");
         }

@@ -48,7 +48,9 @@ public final class GEarthTrayIcon {
             menu.addSeparator();
             menu.add(createInstallMenuItem());
             try {
-                SystemTray.getSystemTray().add(new TrayIcon(awtImage, appTitle, menu));
+                TrayIcon defaultTrayIcon = new TrayIcon(awtImage, appTitle, menu);
+                defaultTrayIcon.setImageAutoSize(true);
+                SystemTray.getSystemTray().add(defaultTrayIcon);
             } catch (AWTException e) {
                 e.printStackTrace();
                 menu = null;

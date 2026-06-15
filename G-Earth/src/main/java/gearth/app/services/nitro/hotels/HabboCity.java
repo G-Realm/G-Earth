@@ -42,7 +42,7 @@ public class HabboCity extends NitroHotel {
     }
 
     @Override
-    public NitroPacketModifier createPacketModifier() {
+    public NitroPacketModifier createPacketModifier(String websocketUrl) {
         if (this.aesKey == null || this.aesIv == null || saltKey == null || saltIv == null) {
             log.error("Failed to create packet modifier, keys not initialized");
             throw new IllegalStateException("Keys not initialized");
