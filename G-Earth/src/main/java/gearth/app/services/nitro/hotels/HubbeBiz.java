@@ -13,7 +13,7 @@ public class HubbeBiz extends NitroHotel {
     }
 
     @Override
-    public NitroPacketModifier createPacketModifier() {
+    public NitroPacketModifier createPacketModifier(String websocketUrl) {
         return null;
     }
 

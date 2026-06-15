@@ -31,8 +31,6 @@ public class NitroHotelManager {
     }
 
     public NitroHotel getByWebsocketOrNull(String websocketUrl) {
-        websocketUrl = normalizeWebsocketUrl(websocketUrl);
-
         for (NitroHotel hotel : hotels) {
             if (hotel.hasWebsocket(websocketUrl)) {
                 return hotel;
@@ -42,7 +40,7 @@ public class NitroHotelManager {
         return null;
     }
 
-    private static String normalizeWebsocketUrl(String websocketUrl) {
+    public static String normalizeWebsocketUrl(String websocketUrl) {
         if (websocketUrl.contains("?")) {
             websocketUrl = websocketUrl.substring(0, websocketUrl.indexOf("?"));
         }

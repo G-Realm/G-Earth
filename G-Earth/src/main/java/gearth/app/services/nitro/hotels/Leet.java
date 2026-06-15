@@ -7,6 +7,7 @@ import gearth.app.services.nitro.NitroPacketModifier;
 import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -15,8 +16,7 @@ public class Leet extends NitroHotel {
     private static final long MAX_TIMESTAMP_SKEW_SECONDS = 600;
 
     private final HashSet<String> socketUrls;
-
-    private boolean secureFrame;
+    private final HashMap<String, Boolean> secureFrames;
 
     public Leet() {
         super("leet",
@@ -28,11 +28,12 @@ public class Leet extends NitroHotel {
                         new NitroAsset("images.leethotel.biz", "/leet-asset-bundles/config/renderer-config.json")));
 
         socketUrls = new HashSet<>();
+        secureFrames = new HashMap<>();
     }
 
     @Override
-    public NitroPacketModifier createPacketModifier() {
-        if (this.secureFrame) {
+    public NitroPacketModifier createPacketModifier(String websocketUrl) {
+        if (secureFrames.getOrDefault(websocketUrl, false)) {
             return new LeetNLPacketModifier();
         }
 
@@ -40,8 +41,12 @@ public class Leet extends NitroHotel {
     }
 
     @Override
-    public boolean hasWebsocket(String websocketUrl) {
-        return socketUrls.contains(websocketUrl);
+    public boolean skipWebsocket(String websocketUrl) {
+        if (socketUrls.contains(websocketUrl)) {
+            return false;
+        }
+
+        return this.hasWebsocket(websocketUrl);
     }
 
     @Override
@@ -55,8 +60,8 @@ public class Leet extends NitroHotel {
     }
 
     @Override
-    public boolean isInitialFrame(final byte[] data) {
-        this.secureFrame = isSecureFrame(data);
+    public boolean isInitialFrame(String websocketUrl, final byte[] data) {
+        secureFrames.put(websocketUrl, isSecureFrame(data));
         return true;
     }
 
