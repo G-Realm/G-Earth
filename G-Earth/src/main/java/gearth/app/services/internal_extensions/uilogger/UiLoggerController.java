@@ -26,6 +26,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -237,7 +240,11 @@ public class UiLoggerController implements Initializable {
 
 
         if (chkTimestamp.isSelected()) {
-            elements.add(new Element(String.format("(%s: %d)\n", LanguageBundle.get("ext.logger.element.timestamp"), System.currentTimeMillis()), "timestamp"));
+            long now = System.currentTimeMillis();
+            String formattedDateTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss.SSS")
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.ofEpochMilli(now));
+            elements.add(new Element(String.format("[%s] (%s: %d)\n", formattedDateTime, LanguageBundle.get("ext.logger.element.timestamp"), now), "timestamp"));
         }
 
         boolean packetInfoAvailable = uiLogger.getPacketInfoManager().getPacketInfoList().size() > 0;
