@@ -505,6 +505,11 @@ public class UiLoggerController implements Initializable {
         menu_timestamp_dateFormat.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat"));
         menu_timestamp_timeFormat.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.timeformat"));
         chkTimestampDate_None.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.none"));
+        chkTimestampDate_DDMMYYYY.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.ddmmyyyy"));
+        chkTimestampDate_MMDDYYYY.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.mmddyyyy"));
+        chkTimestampDate_YYYYMMDD.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.yyyymmdd"));
+        chkTimestampTime_24h.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.timeformat.24h"));
+        chkTimestampTime_12h.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.timeformat.12h"));
 
         menu_packets_details_byteRep.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep"));
         chkReprLegacy.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep.legacy"));
