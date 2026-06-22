@@ -62,7 +62,34 @@
                        </items>
                      </Menu>
                      <CheckMenuItem fx:id="chkDisplayStructure" mnemonicParsing="false" selected="true" text="Structure" />
-                     <CheckMenuItem fx:id="chkTimestamp" mnemonicParsing="false" text="Timestamp" />
+                      <Menu fx:id="menu_timestamp" mnemonicParsing="false" text="Timestamp">
+                          <items>
+                              <Menu fx:id="menu_timestamp_dateFormat" mnemonicParsing="false" text="Date format">
+                                  <items>
+                                      <RadioMenuItem fx:id="chkTimestampDate_DDMMYYYY" mnemonicParsing="false" selected="true" text="Day/Month/Year">
+                                          <toggleGroup>
+                                              <ToggleGroup fx:id="timestampDateFormat" />
+                                          </toggleGroup>
+                                      </RadioMenuItem>
+                                      <RadioMenuItem fx:id="chkTimestampDate_MMDDYYYY" mnemonicParsing="false" text="Month/Day/Year" toggleGroup="$timestampDateFormat" />
+                                      <RadioMenuItem fx:id="chkTimestampDate_YYYYMMDD" mnemonicParsing="false" text="Year/Month/Day" toggleGroup="$timestampDateFormat" />
+                                      <RadioMenuItem fx:id="chkTimestampDate_None" mnemonicParsing="false" text="None" toggleGroup="$timestampDateFormat" />
+                                  </items>
+                              </Menu>
+                              <Menu fx:id="menu_timestamp_timeFormat" mnemonicParsing="false" text="Time format">
+                                  <items>
+                                      <RadioMenuItem fx:id="chkTimestampTime_24h" mnemonicParsing="false" selected="true" text="24-hour">
+                                          <toggleGroup>
+                                              <ToggleGroup fx:id="timestampTimeFormat" />
+                                          </toggleGroup>
+                                      </RadioMenuItem>
+                                      <RadioMenuItem fx:id="chkTimestampTime_12h" mnemonicParsing="false" text="12-hour (AM/PM)" toggleGroup="$timestampTimeFormat" />
+                                  </items>
+                              </Menu>
+                              <SeparatorMenuItem mnemonicParsing="false" />
+                              <CheckMenuItem fx:id="chkTimestamp" mnemonicParsing="false" text="Enable" />
+                          </items>
+                      </Menu>
                  </items>
                </Menu>
                <Menu fx:id="menu_packets_antiSpam" mnemonicParsing="false" text="Anti-spam filter">

@@ -26,6 +26,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -68,6 +71,14 @@ public class UiLoggerController implements Initializable {
     public RadioMenuItem chkAntiSpam_ultra;
     public Label lblFiltered;
     public CheckMenuItem chkTimestamp;
+
+    public RadioMenuItem chkTimestampDate_DDMMYYYY;
+    public RadioMenuItem chkTimestampDate_MMDDYYYY;
+    public RadioMenuItem chkTimestampDate_YYYYMMDD;
+    public RadioMenuItem chkTimestampDate_None;
+    public RadioMenuItem chkTimestampTime_24h;
+    public RadioMenuItem chkTimestampTime_12h;
+    public Menu menu_timestamp, menu_timestamp_dateFormat, menu_timestamp_timeFormat;
 
     public CheckMenuItem chkReprLegacy;
     public CheckMenuItem chkReprHex;
@@ -112,6 +123,19 @@ public class UiLoggerController implements Initializable {
         }
     }
 
+    private String buildTimestampPattern() {
+        String datePart;
+        if (chkTimestampDate_MMDDYYYY.isSelected()) datePart = "MM/dd/yyyy";
+        else if (chkTimestampDate_YYYYMMDD.isSelected()) datePart = "yyyy/MM/dd";
+        else if (chkTimestampDate_None.isSelected()) datePart = null;
+        else datePart = "dd/MM/yyyy";
+
+        String timePart = chkTimestampTime_12h.isSelected() ? "hh:mm:ss.SSS a" : "HH:mm:ss.SSS";
+
+        if (datePart == null) return timePart;
+        return datePart + " " + timePart;
+    }
+
 
     private void saveAllMenuItems() {
         List<Boolean> selection = new ArrayList<>();
@@ -147,7 +171,9 @@ public class UiLoggerController implements Initializable {
                 chkSkipBigPackets, chkMessageName, chkMessageHash, chkMessageId,
                 chkOpenOnConnect, chkResetOnConnect, chkHideOnDisconnect, chkResetOnDisconnect,
                 chkAntiSpam_none, chkAntiSpam_low, chkAntiSpam_medium, chkAntiSpam_high, chkAntiSpam_ultra,
-                chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex
+                chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex,
+                chkTimestampDate_DDMMYYYY, chkTimestampDate_MMDDYYYY, chkTimestampDate_YYYYMMDD, chkTimestampDate_None,
+                chkTimestampTime_24h, chkTimestampTime_12h
         ));
         loadAllMenuItems();
 
@@ -237,7 +263,11 @@ public class UiLoggerController implements Initializable {
 
 
         if (chkTimestamp.isSelected()) {
-            elements.add(new Element(String.format("(%s: %d)\n", LanguageBundle.get("ext.logger.element.timestamp"), System.currentTimeMillis()), "timestamp"));
+            long now = System.currentTimeMillis();
+            String formattedDateTime = DateTimeFormatter.ofPattern(buildTimestampPattern())
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.ofEpochMilli(now));
+            elements.add(new Element(String.format("[%s] (%s: %d)\n", formattedDateTime, LanguageBundle.get("ext.logger.element.timestamp"), now), "timestamp"));
         }
 
         boolean packetInfoAvailable = uiLogger.getPacketInfoManager().getPacketInfoList().size() > 0;
@@ -470,7 +500,16 @@ public class UiLoggerController implements Initializable {
         menu_packets.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets"));
         menu_packets_details.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails"));
         chkDisplayStructure.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.structure"));
-        chkTimestamp.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp"));
+        chkTimestamp.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.enable"));
+        menu_timestamp.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp"));
+        menu_timestamp_dateFormat.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat"));
+        menu_timestamp_timeFormat.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.timeformat"));
+        chkTimestampDate_None.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.none"));
+        chkTimestampDate_DDMMYYYY.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.ddmmyyyy"));
+        chkTimestampDate_MMDDYYYY.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.mmddyyyy"));
+        chkTimestampDate_YYYYMMDD.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.dateformat.yyyymmdd"));
+        chkTimestampTime_24h.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.timeformat.24h"));
+        chkTimestampTime_12h.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.timestamp.timeformat.12h"));
 
         menu_packets_details_byteRep.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep"));
         chkReprLegacy.textProperty().bind(new TranslatableString("%s", "ext.logger.menu.packets.displaydetails.byterep.legacy"));
