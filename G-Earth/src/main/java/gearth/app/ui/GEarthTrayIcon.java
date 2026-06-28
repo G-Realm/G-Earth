@@ -10,6 +10,8 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,6 +52,20 @@ public final class GEarthTrayIcon {
             try {
                 TrayIcon defaultTrayIcon = new TrayIcon(awtImage, appTitle, menu);
                 defaultTrayIcon.setImageAutoSize(true);
+                defaultTrayIcon.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        if (e.getButton() == MouseEvent.BUTTON1) {
+                            Platform.runLater(() -> {
+                                final Stage stage = GEarth.main.getController().getStage();
+                                if (stage.isIconified()) {
+                                    stage.setIconified(false);
+                                }
+                                stage.toFront();
+                            });
+                        }
+                    }
+                });
                 SystemTray.getSystemTray().add(defaultTrayIcon);
             } catch (AWTException e) {
                 e.printStackTrace();
