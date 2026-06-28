@@ -26,6 +26,7 @@ public class ConnectionController extends SubForm {
     private final String AUTODETECT_CACHE = "auto_detect";
     private final String HOST_CACHE = "host";
     private final String PORT_CACHE = "port";
+    private static final String KEEP_RUNNING_IN_BACKGROUND_CACHE_KEY = "keep_running_in_background";
 
     public ComboBox<String> inpPort;
     public ComboBox<String> inpHost;
@@ -34,6 +35,7 @@ public class ConnectionController extends SubForm {
     public TextField outHost;
     public TextField outPort;
     public CheckBox cbx_autodetect;
+    public CheckBox cbx_keepRunningInBackground;
     public TextField txtfield_hotelversion;
 
     private final Object lock = new Object();
@@ -75,6 +77,10 @@ public class ConnectionController extends SubForm {
                     rd_nitro.setSelected(true);
                     break;
             }
+        }
+
+        if (Cacher.getCacheContents().has(KEEP_RUNNING_IN_BACKGROUND_CACHE_KEY)) {
+            cbx_keepRunningInBackground.setSelected(Cacher.getCacheContents().getBoolean(KEEP_RUNNING_IN_BACKGROUND_CACHE_KEY));
         }
 
 
@@ -308,6 +314,7 @@ public class ConnectionController extends SubForm {
         } else if (rd_nitro.isSelected()) {
             Cacher.put(CLIENT_CACHE_KEY, HClient.NITRO);
         }
+        Cacher.put(KEEP_RUNNING_IN_BACKGROUND_CACHE_KEY, cbx_keepRunningInBackground.isSelected());
         getHConnection().abort();
     }
 
@@ -334,6 +341,10 @@ public class ConnectionController extends SubForm {
         return false;
     }
 
+    public boolean isKeepRunningInBackground() {
+        return cbx_keepRunningInBackground.isSelected();
+    }
+
     private void initLanguageBinding() {
         TranslatableString port = new TranslatableString("%s", "tab.connection.port");
         TranslatableString host = new TranslatableString("%s", "tab.connection.host");
@@ -353,5 +364,6 @@ public class ConnectionController extends SubForm {
         lblStateHead.textProperty().bind(new TranslatableString("%s", "tab.connection.state"));
         state = new TranslatableString("%s", "tab.connection.state.notconnected");
         lblState.textProperty().bind(state);
+        cbx_keepRunningInBackground.textProperty().bind(new TranslatableString("%s", "tab.connection.options.keeprunninginbackground"));
     }
 }

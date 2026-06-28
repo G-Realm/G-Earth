@@ -133,6 +133,10 @@ public class GEarth extends Application {
     }
 
     private void closeGEarth() {
+        if (controller.connectionController.isKeepRunningInBackground()) {
+            stage.hide();
+            return;
+        }
         controller.exit();
         Platform.exit();
         System.exit(0);
