@@ -31,6 +31,19 @@
     <url>https://github.com/sirjonasxx/G-Earth</url>
     <description>Cross Platform Habbo packetlogger/manipulator</description>
 
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
     <modules>
         <module>G-Earth</module>
         <module>G-Earth-Api</module>

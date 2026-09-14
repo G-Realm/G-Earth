@@ -70,10 +70,6 @@ jobs:
         cache: 'maven'
         cache-dependency-path: 'G-Earth/pom.xml'
 
-    - name: Install JavaPackager
-      working-directory: deps/JavaPackager
-      run: ./gradlew publishToMavenLocal
-
     # Check if GITHUB_REF_TYPE is a tag
     - name: Build G-Earth
       shell: bash

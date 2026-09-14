@@ -12,7 +12,7 @@
         <logback.version>1.5.32</logback.version>
         <bouncycastle.version>1.84</bouncycastle.version>
         <apache.http>5.6.1</apache.http>
-        <io.github.fvarrui.javapackager>1.7.7</io.github.fvarrui.javapackager>
+        <javapackager.version>0f7cb968a122b004a769fec3ba5d6b20084d1795</javapackager.version>
         <!-- Encoding. -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -78,9 +78,9 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>io.github.fvarrui</groupId>
+                <groupId>com.github.UnfamiliarLegacy.JavaPackager</groupId>
                 <artifactId>javapackager</artifactId>
-                <version>${io.github.fvarrui.javapackager}</version>
+                <version>${javapackager.version}</version>
                 <!-- https://github.com/javapackager/JavaPackager/tree/master/docs -->
                 <configuration>
                     <bundleJre>true</bundleJre>
@@ -114,7 +114,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>io.github.fvarrui</groupId>
+                        <groupId>com.github.UnfamiliarLegacy.JavaPackager</groupId>
                         <artifactId>javapackager</artifactId>
                         <executions>
                             <execution>
@@ -152,7 +152,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>io.github.fvarrui</groupId>
+                        <groupId>com.github.UnfamiliarLegacy.JavaPackager</groupId>
                         <artifactId>javapackager</artifactId>
                         <executions>
                             <execution>
@@ -188,7 +188,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>io.github.fvarrui</groupId>
+                        <groupId>com.github.UnfamiliarLegacy.JavaPackager</groupId>
                         <artifactId>javapackager</artifactId>
                         <executions>
                             <execution>
