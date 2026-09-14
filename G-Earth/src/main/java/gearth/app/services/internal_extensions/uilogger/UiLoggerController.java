@@ -8,18 +8,26 @@ import gearth.protocol.HPacket;
 import gearth.app.ui.subforms.logger.loggerdisplays.PacketLogger;
 import gearth.app.ui.translations.LanguageBundle;
 import gearth.app.ui.translations.TranslatableString;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.Initializable;
+import javafx.scene.Cursor;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.bouncycastle.util.encoders.Hex;
 import org.fxmisc.flowless.VirtualizedScrollPane;
+import org.fxmisc.richtext.CharacterHit;
 import org.fxmisc.richtext.StyleClassedTextArea;
-import org.fxmisc.richtext.model.StyleSpansBuilder;
+import org.fxmisc.richtext.model.ReadOnlyStyledDocument;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -43,6 +51,15 @@ public class UiLoggerController implements Initializable {
     public CheckMenuItem chkDisplayStructure;
     public Label lblAutoScroll;
     public CheckMenuItem chkAutoscroll;
+    public CheckMenuItem chkCopyButton;
+    public CheckMenuItem chkPauseOnHover;
+    public CheckMenuItem chkCopyStructure;
+    public CheckMenuItem chkCopyLegacy;
+    public CheckMenuItem chkCopyHex;
+    public CheckMenuItem chkCopyRawHex;
+    public CheckMenuItem chkCopyName;
+    public CheckMenuItem chkCopyHash;
+    public CheckMenuItem chkCopyId;
     public CheckMenuItem chkSkipBigPackets;
     public CheckMenuItem chkMessageName;
     public CheckMenuItem chkMessageHash;
@@ -77,6 +94,11 @@ public class UiLoggerController implements Initializable {
     private Map<Integer, LinkedList<Long>> filterTimestamps = new HashMap<>();
 
     private StyleClassedTextArea area;
+    private final List<LogControl> controls = new ArrayList<>();
+    private volatile boolean mouseOverArea = false;
+    private LogControl pressedControl;
+    private int pressIndex;
+    private boolean dragged;
 
     private Stage stage;
 
@@ -147,7 +169,10 @@ public class UiLoggerController implements Initializable {
                 chkSkipBigPackets, chkMessageName, chkMessageHash, chkMessageId,
                 chkOpenOnConnect, chkResetOnConnect, chkHideOnDisconnect, chkResetOnDisconnect,
                 chkAntiSpam_none, chkAntiSpam_low, chkAntiSpam_medium, chkAntiSpam_high, chkAntiSpam_ultra,
-                chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex
+                chkTimestamp, chkReprHex, chkReprLegacy, chkReprRawHex,
+                chkCopyButton, chkPauseOnHover,
+                chkCopyStructure, chkCopyLegacy, chkCopyHex, chkCopyRawHex,
+                chkCopyName, chkCopyHash, chkCopyId
         ));
         loadAllMenuItems();
 
@@ -165,6 +190,62 @@ public class UiLoggerController implements Initializable {
 
         VirtualizedScrollPane<StyleClassedTextArea> vsPane = new VirtualizedScrollPane<>(area);
         borderPane.setCenter(vsPane);
+
+        borderPane.hoverProperty().addListener((obs, was, hovering) -> {
+            mouseOverArea = hovering;
+            if (!hovering && shouldAutoscroll()) scrollToBottom();
+        });
+        area.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            pressedControl = null;
+            dragged = false;
+            if (e.getButton() != MouseButton.PRIMARY) return;
+            CharacterHit hit = area.hit(e.getX(), e.getY());
+            if (!hit.getCharacterIndex().isPresent()) return;
+            LogControl control = controlAt(hit.getCharacterIndex().getAsInt());
+            if (control != null) {
+                pressedControl = control;
+                pressIndex = hit.getInsertionIndex();
+                e.consume();
+            }
+        });
+        area.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
+            if (pressedControl == null) return;
+            int current = area.hit(e.getX(), e.getY()).getInsertionIndex();
+            if (current != pressIndex) {
+                dragged = true;
+                area.selectRange(pressIndex, current);
+            }
+            e.consume();
+        });
+        area.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            LogControl control = pressedControl;
+            pressedControl = null;
+            if (control == null || e.getButton() != MouseButton.PRIMARY) return;
+            if (!dragged) fireControl(control);
+            e.consume();
+        });
+        area.setOnMouseMoved(e -> {
+            CharacterHit hit = area.hit(e.getX(), e.getY());
+            boolean overToken = hit.getCharacterIndex().isPresent() && controlAt(hit.getCharacterIndex().getAsInt()) != null;
+            area.setCursor(overToken ? Cursor.HAND : Cursor.TEXT);
+        });
+        area.plainTextChanges().subscribe(change -> {
+            int pos = change.getPosition();
+            int removed = change.getRemoved().length();
+            int delta = change.getInserted().length() - removed;
+            int removeEnd = pos + removed;
+            Iterator<LogControl> it = controls.iterator();
+            while (it.hasNext()) {
+                LogControl control = it.next();
+                if (control.end <= pos) continue;
+                if (control.start >= removeEnd) {
+                    control.start += delta;
+                    control.end += delta;
+                } else {
+                    it.remove();
+                }
+            }
+        });
 
         synchronized (appendLater) {
             initialized = true;
@@ -235,6 +316,15 @@ public class UiLoggerController implements Initializable {
 
         ArrayList<Element> elements = new ArrayList<>();
 
+        boolean reprLegacy = chkReprLegacy.isSelected();
+        boolean reprHex = chkReprHex.isSelected();
+        boolean reprRawHex = chkReprRawHex.isSelected();
+        boolean isSkipped = (reprLegacy || reprHex || reprRawHex) && chkSkipBigPackets.isSelected()
+                && (packet.length() > 4000 || (packet.length() > 1000 && reprHex));
+        boolean showControls = chkCopyButton.isSelected() && !isSkipped;
+        byte[] controlBytes = showControls ? packet.toBytes() : null;
+        HMessage.Direction controlDirection = isIncoming ? HMessage.Direction.TOCLIENT : HMessage.Direction.TOSERVER;
+        boolean controlsPlaced = false;
 
         if (chkTimestamp.isSelected()) {
             elements.add(new Element(String.format("(%s: %d)\n", LanguageBundle.get("ext.logger.element.timestamp"), System.currentTimeMillis()), "timestamp"));
@@ -271,18 +361,18 @@ public class UiLoggerController implements Initializable {
         }
 
         if (addedSomeMessageInfo) {
+            if (showControls) {
+                elements.add(new Element(" ", ""));
+                addControlTokens(elements, controlBytes, controlDirection);
+                controlsPlaced = true;
+            }
             elements.add(new Element("\n", ""));
         }
 
         if (isBlocked) elements.add(new Element(String.format("[%s]\n", LanguageBundle.get("ext.logger.element.blocked")), "blocked"));
         else if (isReplaced) elements.add(new Element(String.format("[%s]\n", LanguageBundle.get("ext.logger.element.replaced")), "replaced"));
 
-        boolean reprLegacy = chkReprLegacy.isSelected();
-        boolean reprHex = chkReprHex.isSelected();
-        boolean reprRawHex = chkReprRawHex.isSelected();
-
         if (reprLegacy || reprHex || reprRawHex) {
-            boolean isSkipped = chkSkipBigPackets.isSelected() && (packet.length() > 4000 || (packet.length() > 1000 && reprHex));
             if (isSkipped) {
                 elements.add(new Element(String.format("<%s>", LanguageBundle.get("ext.logger.element.skipped")), "skipped"));
             } else {
@@ -333,6 +423,13 @@ public class UiLoggerController implements Initializable {
         }
 
 
+        if (showControls && !controlsPlaced) {
+            List<Element> controlLine = new ArrayList<>();
+            addControlTokens(controlLine, controlBytes, controlDirection);
+            controlLine.add(new Element("\n", ""));
+            elements.addAll(0, controlLine);
+        }
+
         elements.add(new Element("--------------------\n", ""));
 
         synchronized (appendLater) {
@@ -348,24 +445,119 @@ public class UiLoggerController implements Initializable {
 
     private synchronized void appendLog(List<Element> elements) {
         Platform.runLater(() -> {
-            StringBuilder sb = new StringBuilder();
-            StyleSpansBuilder<Collection<String>> styleSpansBuilder = new StyleSpansBuilder<>(0);
+            int oldLen = area.getLength();
+            List<LogControl> newControls = new ArrayList<>();
+            ReadOnlyStyledDocument<Collection<String>, String, Collection<String>> doc = null;
 
             for (Element element : elements) {
-                sb.append(element.text);
+                if (element instanceof ControlElement) {
+                    ControlElement control = (ControlElement) element;
+                    int start = oldLen + (doc == null ? 0 : doc.length());
+                    newControls.add(new LogControl(start, start + control.text.length(), control.packetBytes, control.direction));
+                }
 
-                styleSpansBuilder.add(Collections.singleton(element.className), element.text.length());
+                ReadOnlyStyledDocument<Collection<String>, String, Collection<String>> part =
+                        ReadOnlyStyledDocument.fromString(element.text, Collections.<String>emptyList(),
+                                Collections.singleton(element.className), area.getSegOps());
+                doc = (doc == null) ? part : doc.concat(part);
             }
 
-            int oldLen = area.getLength();
+            if (doc == null) return;
 
-            area.appendText(sb.toString());
-            area.setStyleSpans(oldLen, styleSpansBuilder.create());
+            area.getContent().replace(oldLen, oldLen, doc);
+            controls.addAll(newControls);
 
-            if (chkAutoscroll.isSelected()) {
-                area.requestFollowCaret();
-            }
+            if (shouldAutoscroll()) scrollToBottom();
         });
+    }
+
+    private boolean shouldAutoscroll() {
+        return chkAutoscroll.isSelected()
+                && area.getSelection().getLength() == 0
+                && !(chkPauseOnHover.isSelected() && mouseOverArea);
+    }
+
+    private void scrollToBottom() {
+        int last = area.getParagraphs().size() - 1;
+        if (last >= 0) area.showParagraphAtBottom(last);
+    }
+
+    private LogControl controlAt(int idx) {
+        for (LogControl control : controls) {
+            if (idx >= control.start && idx < control.end) return control;
+        }
+        return null;
+    }
+
+    private void fireControl(LogControl control) {
+        ClipboardContent content = new ClipboardContent();
+        content.putString(copyTextFor(control));
+        Clipboard.getSystemClipboard().setContent(content);
+        highlightCopied(control.start, control.end);
+    }
+
+    private String copyTextFor(LogControl control) {
+        HPacket packet = new HPacket(control.bytes);
+        List<String> parts = new ArrayList<>();
+
+        if (chkCopyName.isSelected() || chkCopyHash.isSelected()) {
+            List<PacketInfo> infos = uiLogger.getPacketInfoManager().getAllPacketInfoFromHeaderId(control.direction, packet.headerId());
+            if (chkCopyName.isSelected()) {
+                infos.stream().map(PacketInfo::getName).filter(Objects::nonNull).distinct().forEach(name -> parts.add("[" + name + "]"));
+            }
+            if (chkCopyHash.isSelected()) {
+                infos.stream().map(PacketInfo::getHash).filter(Objects::nonNull).distinct().forEach(hash -> parts.add("[" + hash + "]"));
+            }
+        }
+        if (chkCopyId.isSelected()) parts.add("[" + packet.headerId() + "]");
+        if (chkCopyLegacy.isSelected()) parts.add(packet.toString());
+        if (chkCopyHex.isSelected()) parts.add(Hexdump.hexdump(packet.toBytes()));
+        if (chkCopyRawHex.isSelected()) parts.add(Hex.toHexString(packet.toBytes()));
+        if (chkCopyStructure.isSelected()) {
+            String expr = "";
+            try {
+                expr = packet.toExpression(control.direction, uiLogger.getPacketInfoManager(), true);
+            } catch (Exception ignored) {
+            }
+            if (expr != null && !expr.isEmpty()) parts.add(expr);
+        }
+
+        if (parts.isEmpty()) return packet.toString();
+        return String.join("\n", parts);
+    }
+
+    private void highlightCopied(int start, int end) {
+        if (start >= end) return;
+        setTokenStyle(start, end, "copy", "copied");
+        PauseTransition reset = new PauseTransition(Duration.millis(450));
+        reset.setOnFinished(e -> setTokenStyle(start, end, "copy"));
+        reset.play();
+    }
+
+    private void setTokenStyle(int start, int end, String... styleClasses) {
+        if (start < end && end <= area.getLength()) {
+            area.setStyle(start, end, Arrays.asList(styleClasses));
+        }
+    }
+
+    private void addControlTokens(List<Element> elements, byte[] bytes, HMessage.Direction direction) {
+        if (chkCopyButton.isSelected()) {
+            elements.add(new ControlElement("[Copy]", bytes, direction));
+            elements.add(new Element(" ", ""));
+        }
+    }
+
+    private static class LogControl {
+        int start, end;
+        final byte[] bytes;
+        final HMessage.Direction direction;
+
+        LogControl(int start, int end, byte[] bytes, HMessage.Direction direction) {
+            this.start = start;
+            this.end = end;
+            this.bytes = bytes;
+            this.direction = direction;
+        }
     }
 
     public void setStage(Stage stage) {
@@ -390,6 +582,7 @@ public class UiLoggerController implements Initializable {
 
     public void clearText(ActionEvent actionEvent) {
         area.clear();
+        controls.clear();
         System.gc();
     }
 
