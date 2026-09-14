@@ -27,11 +27,11 @@ public class UpdateChecker {
     public static void checkForUpdates() {
         new Thread(() -> {
             // Check official repository first.
-            if (!GEarth.repository.equals(GEarth.OFFICIAL_REPOSITORY)) {
-                if (checkRepository(GEarth.OFFICIAL_REPOSITORY)) {
-                    return;
-                }
-            }
+            // if (!GEarth.repository.equals(GEarth.OFFICIAL_REPOSITORY)) {
+            //     if (checkRepository(GEarth.OFFICIAL_REPOSITORY)) {
+            //         return;
+            //     }
+            // }
 
             // Check repository of the fork.
             checkRepository("G-Realm/G-Earth");

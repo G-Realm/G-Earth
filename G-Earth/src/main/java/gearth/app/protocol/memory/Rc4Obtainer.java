@@ -47,7 +47,7 @@ public class Rc4Obtainer {
 
         FlowPane fp = new FlowPane();
         Label lbl = new Label(LanguageBundle.get("alert.somethingwentwrong.content").replaceAll("\\\\n", System.lineSeparator()));
-        Hyperlink link = new Hyperlink("https://github.com/sirjonasxx/G-Earth/wiki/Troubleshooting");
+        Hyperlink link = new Hyperlink("https://github.com/G-Realm/G-Earth");
         fp.getChildren().addAll(lbl, link);
         link.setOnAction(event -> {
             GEarth.main.getHostServices().showDocument(link.getText());

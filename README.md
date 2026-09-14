@@ -10,12 +10,10 @@ Click here to [download](https://github.com/G-Realm/G-Earth/releases/latest) the
 
 |         | Windows | MacOS | Linux |
 |---------|:-------:|:-----:|:-----:|
-| Flash   |    ✅    |   ❌   |   ❌   |
-| Origins |    ✅    |  ⚠️   |   ❌   |
-| Unity   |    ✅    |   ❌   |   ❌   |
-| Nitro   |    ✅    | ️⚠️️  |   ❌   |
-
-The MacOS builds are currently broken.
+| Flash   |    ✅    |  ✅  |   ❌   |
+| Origins |    ✅    |  ✅  |   ❌   |
+| Unity   |    ✅    |  ❌  |   ❌   |
+| Nitro   |    ✅    |  ️✅  |   ❌   |
 
 # Features
 
