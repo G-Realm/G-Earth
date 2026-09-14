@@ -213,6 +213,12 @@
                                             <arg value="-arch"/>
                                             <arg value="x86_64"/>
                                             <arg value="${project.basedir}/src/main/native/macos/gearth-hosts-helper.c"/>
+                                            <arg value="${project.basedir}/src/main/native/macos/gearth-helper-proxy.c"/>
+                                            <arg value="-framework"/>
+                                            <arg value="SystemConfiguration"/>
+                                            <arg value="-framework"/>
+                                            <arg value="CoreFoundation"/>
+                                            <arg value="-lpthread"/>
                                             <arg value="-o"/>
                                             <arg value="${project.build.directory}/G-Earth-Hosts-Helper"/>
                                         </exec>

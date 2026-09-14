@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
+#include <limits.h>
+#include <pthread.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdbool.h>
@@ -17,9 +19,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "gearth-helper-proxy.h"
+
 extern char **environ;
 
-#define HELPER_VERSION "1"
+#define HELPER_VERSION "2"
 #define SOCKET_PATH "/var/run/com.gearth.hosts-helper.sock"
 #define HOSTS_PATH "/etc/hosts"
 #define HOSTS_MARKER "\t# G-Earth replacement"
@@ -28,6 +32,9 @@ extern char **environ;
 #define MAX_MAPPINGS 64
 
 static int server_fd = -1;
+static pthread_mutex_t hosts_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool proxy_active = false;
 
 static void cleanup(int signal_number) {
     (void) signal_number;
@@ -270,6 +277,13 @@ static bool replace_hosts(char *const addresses[], char *const hostnames[], size
     return success;
 }
 
+static bool locked_replace_hosts(char *const addresses[], char *const hostnames[], size_t mapping_count) {
+    pthread_mutex_lock(&hosts_mutex);
+    bool success = replace_hosts(addresses, hostnames, mapping_count);
+    pthread_mutex_unlock(&hosts_mutex);
+    return success;
+}
+
 static bool parse_mappings(char *body, char *addresses[], char *hostnames[], size_t *mapping_count) {
     char *save = NULL;
     char *line = strtok_r(body, "\n", &save);
@@ -300,10 +314,61 @@ static bool parse_mappings(char *body, char *addresses[], char *hostnames[], siz
     return *mapping_count > 0;
 }
 
+static bool parse_port(char *request, uint16_t *port) {
+    const char prefix[] = "PROXY_ACQUIRE ";
+    char *newline = strchr(request, '\n');
+    if (newline == NULL || newline[1] != '\0' || strncmp(request, prefix, sizeof(prefix) - 1) != 0) {
+        return false;
+    }
+    *newline = '\0';
+    char *end = NULL;
+    errno = 0;
+    long value = strtol(request + sizeof(prefix) - 1, &end, 10);
+    if (errno != 0 || end == request + sizeof(prefix) - 1 || *end != '\0'
+            || value <= 0 || value > UINT16_MAX) {
+        return false;
+    }
+    *port = (uint16_t) value;
+    return true;
+}
+
+static void handle_proxy_lease(int client, pid_t peer_pid, char *request) {
+    uint16_t port = 0;
+    if (!parse_port(request, &port) || !gearth_process_listens(peer_pid, port)) {
+        reply(client, "ERR proxy-listener\n");
+        return;
+    }
+
+    pthread_mutex_lock(&proxy_mutex);
+    if (proxy_active || !gearth_proxy_apply(port)) {
+        pthread_mutex_unlock(&proxy_mutex);
+        reply(client, "ERR proxy\n");
+        return;
+    }
+    proxy_active = true;
+    pthread_mutex_unlock(&proxy_mutex);
+    reply(client, "OK\n");
+
+    struct timeval no_timeout = {0};
+    (void) setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &no_timeout, sizeof(no_timeout));
+    char ignored;
+    while (read(client, &ignored, 1) > 0) {
+    }
+
+    pthread_mutex_lock(&proxy_mutex);
+    (void) gearth_proxy_restore();
+    proxy_active = false;
+    pthread_mutex_unlock(&proxy_mutex);
+}
+
 static void handle_client(int client) {
     uid_t peer_uid;
     gid_t peer_gid;
-    if (getpeereid(client, &peer_uid, &peer_gid) != 0 || !active_console_user(peer_uid)) {
+    pid_t peer_pid = 0;
+    socklen_t peer_pid_length = sizeof(peer_pid);
+    if (getpeereid(client, &peer_uid, &peer_gid) != 0
+            || getsockopt(client, SOL_LOCAL, LOCAL_PEERPID, &peer_pid, &peer_pid_length) != 0
+            || peer_pid <= 0 || !active_console_user(peer_uid)) {
         reply(client, "ERR unauthorized\n");
         return;
     }
@@ -321,6 +386,11 @@ static void handle_client(int client) {
         }
         if (received == 0) break;
         length += (size_t) received;
+        request[length] = '\0';
+        if (strncmp(request, "PROXY_ACQUIRE ", 14) == 0 && strchr(request, '\n') != NULL) {
+            handle_proxy_lease(client, peer_pid, request);
+            return;
+        }
     }
     if (length == 0 || length == MAX_REQUEST_SIZE) {
         reply(client, "ERR request-size\n");
@@ -333,7 +403,7 @@ static void handle_client(int client) {
         return;
     }
     if (strcmp(request, "REMOVE\n") == 0 || strcmp(request, "REMOVE") == 0) {
-        if (replace_hosts(NULL, NULL, 0)) reply(client, "OK\n");
+        if (locked_replace_hosts(NULL, NULL, 0)) reply(client, "OK\n");
         else reply(client, "ERR hosts\n");
         return;
     }
@@ -355,8 +425,16 @@ static void handle_client(int client) {
             return;
         }
     }
-    if (replace_hosts(addresses, hostnames, mapping_count)) reply(client, "OK\n");
+    if (locked_replace_hosts(addresses, hostnames, mapping_count)) reply(client, "OK\n");
     else reply(client, "ERR hosts\n");
+}
+
+static void *client_thread(void *argument) {
+    int client = *(int *) argument;
+    free(argument);
+    handle_client(client);
+    close(client);
+    return NULL;
 }
 
 int main(void) {
@@ -366,6 +444,7 @@ int main(void) {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, cleanup);
     signal(SIGINT, cleanup);
+    if (!gearth_proxy_restore()) return EXIT_FAILURE;
 
     server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (server_fd < 0) return EXIT_FAILURE;
@@ -388,7 +467,18 @@ int main(void) {
             if (errno == EINTR) continue;
             cleanup(0);
         }
-        handle_client(client);
-        close(client);
+        int *argument = malloc(sizeof(*argument));
+        pthread_t thread;
+        if (argument == NULL) {
+            close(client);
+            continue;
+        }
+        *argument = client;
+        if (pthread_create(&thread, NULL, client_thread, argument) != 0) {
+            free(argument);
+            close(client);
+            continue;
+        }
+        pthread_detach(thread);
     }
 }

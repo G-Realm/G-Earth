@@ -21,7 +21,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
-final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
+public final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
 
     private static final Logger LOG = LoggerFactory.getLogger(MacOSPrivilegedHostHelper.class);
     private static final String LABEL = "com.gearth.hosts-helper";
@@ -30,6 +30,9 @@ final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
     private static final Path INSTALLED_HELPER = Path.of("/Library/PrivilegedHelperTools", LABEL);
     private static final Path INSTALLED_PLIST = Path.of("/Library/LaunchDaemons", PLIST_NAME);
     private static final Path SOCKET = Path.of("/var/run", LABEL + ".sock");
+
+    public MacOSPrivilegedHostHelper() {
+    }
 
     @Override
     public boolean apply(String[] lines) {
@@ -55,6 +58,38 @@ final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
         } catch (Exception e) {
             LOG.error("Failed to remove host redirects through the privileged helper", e);
             return false;
+        }
+    }
+
+    public ProxyLease acquireProxy(int port) {
+        if (port <= 0 || port > 65535) {
+            return null;
+        }
+        SocketChannel channel = null;
+        try {
+            if (!ensureInstalled()) {
+                return null;
+            }
+            channel = SocketChannel.open(StandardProtocolFamily.UNIX);
+            channel.connect(UnixDomainSocketAddress.of(SOCKET));
+            write(channel, "PROXY_ACQUIRE " + port + "\n");
+            final String response = readLine(channel);
+            if (!response.startsWith("OK")) {
+                LOG.error("Privileged helper rejected proxy lease: {}", response);
+                channel.close();
+                return null;
+            }
+            return new ProxyLease(channel);
+        } catch (Exception e) {
+            LOG.error("Failed to acquire a system proxy lease", e);
+            if (channel != null) {
+                try {
+                    channel.close();
+                } catch (IOException ignored) {
+                }
+            }
+            showError();
+            return null;
         }
     }
 
@@ -146,10 +181,7 @@ final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
         final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(SOCKET);
         try (SocketChannel channel = SocketChannel.open(StandardProtocolFamily.UNIX)) {
             channel.connect(address);
-            final ByteBuffer requestBuffer = StandardCharsets.UTF_8.encode(request);
-            while (requestBuffer.hasRemaining()) {
-                channel.write(requestBuffer);
-            }
+            write(channel, request);
             channel.shutdownOutput();
 
             final ByteBuffer responseBuffer = ByteBuffer.allocate(1024);
@@ -164,6 +196,24 @@ final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
             }
             return true;
         }
+    }
+
+    private static void write(SocketChannel channel, String request) throws IOException {
+        final ByteBuffer requestBuffer = StandardCharsets.UTF_8.encode(request);
+        while (requestBuffer.hasRemaining()) {
+            channel.write(requestBuffer);
+        }
+    }
+
+    private static String readLine(SocketChannel channel) throws IOException {
+        final ByteBuffer response = ByteBuffer.allocate(1024);
+        while (response.hasRemaining()) {
+            final int count = channel.read(response);
+            if (count < 0) break;
+            if (count > 0 && response.get(response.position() - 1) == '\n') break;
+        }
+        response.flip();
+        return StandardCharsets.UTF_8.decode(response).toString().trim();
     }
 
     private static boolean confirmInstallation(boolean update) throws IOException, InterruptedException {
@@ -214,5 +264,18 @@ final class MacOSPrivilegedHostHelper implements MacOSHostReplacer.HostHelper {
 
     private static String appleScriptEscape(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    public static final class ProxyLease implements AutoCloseable {
+        private final SocketChannel channel;
+
+        private ProxyLease(SocketChannel channel) {
+            this.channel = channel;
+        }
+
+        @Override
+        public void close() throws IOException {
+            channel.close();
+        }
     }
 }

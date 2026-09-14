@@ -21,6 +21,7 @@ import java.io.File;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -34,6 +35,7 @@ import java.util.stream.Stream;
 public class HttpProxyCertificateFactory implements HttpProxyCACertFactory {
 
     private static final Logger log = LoggerFactory.getLogger(HttpProxyCertificateFactory.class);
+    private static final long SERVER_CERTIFICATE_VALIDITY_DAYS = 365;
 
     private final File caCertFile;
     private final File caKeyFile;
@@ -63,7 +65,7 @@ public class HttpProxyCertificateFactory implements HttpProxyCACertFactory {
 
     public boolean loadOrCreate() {
         if (this.caCertFile.exists() && this.caKeyFile.exists()) {
-            return this.loadCertificate();
+            return protectPrivateKey() && this.loadCertificate();
         }
 
         // Delete any existing files
@@ -105,13 +107,24 @@ public class HttpProxyCertificateFactory implements HttpProxyCACertFactory {
 
             Files.write(Paths.get(this.caCertFile.toURI()), this.caCert.getEncoded());
             Files.write(Paths.get(this.caKeyFile.toURI()), new PKCS8EncodedKeySpec(this.caKey.getEncoded()).getEncoded());
-
-            return true;
+            return protectPrivateKey();
         } catch (Exception e) {
             log.error("Failed to create root certificate", e);
         }
 
         return false;
+    }
+
+    private boolean protectPrivateKey() {
+        try {
+            Files.setPosixFilePermissions(this.caKeyFile.toPath(), PosixFilePermissions.fromString("rw-------"));
+            return true;
+        } catch (UnsupportedOperationException ignored) {
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to protect root certificate private key", e);
+            return false;
+        }
     }
 
     private boolean loadCertificate() {
@@ -151,8 +164,7 @@ public class HttpProxyCertificateFactory implements HttpProxyCACertFactory {
 
             final X509Certificate cert = generateServerCert(keyPair.getPublic(),
                     commonName,
-                    new GeneralName(GeneralName.dNSName, "localhost"),
-                    new GeneralName(GeneralName.iPAddress, "127.0.0.1"));
+                    subjectAlternativeName(commonName));
 
             final SslContext ctx = SslContextBuilder.forServer(keyPair.getPrivate(), cert).build();
 
@@ -163,9 +175,28 @@ public class HttpProxyCertificateFactory implements HttpProxyCACertFactory {
         }
     }
 
+    private GeneralName subjectAlternativeName(final String commonName) {
+        String name = commonName;
+        if (name.startsWith("[") && name.endsWith("]")) {
+            name = name.substring(1, name.length() - 1);
+        }
+
+        final boolean isIpAddress = name.contains(":") || name.matches("\\d{1,3}(\\.\\d{1,3}){3}");
+        return new GeneralName(isIpAddress ? GeneralName.iPAddress : GeneralName.dNSName, name);
+    }
+
     private X509Certificate generateServerCert(final PublicKey serverPubKey, final String commonName, final GeneralName... san) throws Exception {
         final String issuer = CertUtil.getSubject(this.caCert);
         final PrivateKey caPriKey = this.getCAPriKey();
+        final long now = System.currentTimeMillis();
+        final Date notBefore = new Date(Math.max(
+                this.caCert.getNotBefore().getTime(),
+                now - TimeUnit.DAYS.toMillis(1)
+        ));
+        final Date notAfter = new Date(Math.min(
+                this.caCert.getNotAfter().getTime(),
+                now + TimeUnit.DAYS.toMillis(SERVER_CERTIFICATE_VALIDITY_DAYS)
+        ));
 
         // Replace "CN" in cert authority
         final String subject = Stream.of(issuer.split(", ")).map(item -> {
@@ -179,8 +210,8 @@ public class HttpProxyCertificateFactory implements HttpProxyCACertFactory {
 
         final JcaX509v3CertificateBuilder jv3Builder = new JcaX509v3CertificateBuilder(new X500Name(issuer),
                 BigInteger.valueOf(System.currentTimeMillis() + (long) (Math.random() * 10000) + 1000),
-                this.caCert.getNotBefore(),
-                this.caCert.getNotAfter(),
+                notBefore,
+                notAfter,
                 new X500Name(subject),
                 serverPubKey);
 

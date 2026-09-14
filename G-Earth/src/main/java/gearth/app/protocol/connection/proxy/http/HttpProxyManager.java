@@ -27,11 +27,15 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
 import java.io.File;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.security.Security;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HttpProxyManager {
@@ -39,6 +43,7 @@ public class HttpProxyManager {
     private static final Logger log = LoggerFactory.getLogger(HttpProxyManager.class);
 
     private static final String ADMIN_WARNING_KEY = "admin_warning_dialog";
+    private static final long SERVER_CERTIFICATE_VALIDITY_DAYS = 365;
     private static final AtomicBoolean SHUTDOWN_HOOK = new AtomicBoolean();
 
     private final HttpProxyCertificateFactory certificateFactory;
@@ -155,7 +160,27 @@ public class HttpProxyManager {
         }
 
         log.info("Starting http proxy on port {}", httpPort);
-        proxyServer.startAsync(httpPort);
+        try {
+            proxyServer.startAsync("127.0.0.1", httpPort).toCompletableFuture().get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            proxyServer.close();
+            return false;
+        } catch (ExecutionException e) {
+            proxyServer.close();
+            log.error("Failed to start http proxy", e.getCause());
+            return false;
+        }
+
+        final long now = System.currentTimeMillis();
+        config.setCaNotBefore(new Date(Math.max(
+                certificateFactory.getCACert().getNotBefore().getTime(),
+                now - TimeUnit.DAYS.toMillis(1)
+        )));
+        config.setCaNotAfter(new Date(Math.min(
+                certificateFactory.getCACert().getNotAfter().getTime(),
+                now + TimeUnit.DAYS.toMillis(SERVER_CERTIFICATE_VALIDITY_DAYS)
+        )));
 
         // Hack to swap the SSL context.
         // Need to set this after proxyServer is started because starting it will override the configured SSL context.
@@ -207,7 +232,7 @@ public class HttpProxyManager {
         ServerSocket socket = null;
 
         try {
-            socket = new ServerSocket(0);
+            socket = new ServerSocket(0, 1, InetAddress.getLoopbackAddress());
             return socket.getLocalPort();
         } catch (Exception e) {
             log.error("Failed to get free port", e);
