@@ -12,7 +12,7 @@
         <logback.version>1.5.32</logback.version>
         <bouncycastle.version>1.84</bouncycastle.version>
         <apache.http>5.6.1</apache.http>
-        <javapackager.version>0f7cb968a122b004a769fec3ba5d6b20084d1795</javapackager.version>
+        <javapackager.version>e0949107352e17f6cd20463e1aca11e519c6ce06</javapackager.version>
         <!-- Encoding. -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
