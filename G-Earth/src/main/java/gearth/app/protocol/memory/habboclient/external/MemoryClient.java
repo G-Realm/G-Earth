@@ -9,10 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -49,21 +50,35 @@ public class MemoryClient implements HabboClient {
     }
 
     private HashSet<String> dumpTables() throws IOException, URISyntaxException {
-        String filePath = new File(this.getClass().getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
+        final Path codeLocation = Path.of(this.getClass().getProtectionDomain()
+                .getCodeSource().getLocation().toURI());
+        final Path codeDirectory = Files.isDirectory(codeLocation)
+                ? codeLocation
+                : codeLocation.getParent();
 
+        final String executableName;
         if (OSValidator.isWindows()) {
             // Detect Windows 32 or 64 bit
             if (System.getProperty("os.arch").contains("64")) {
-                filePath += "\\G-MemZ-x64.exe";
+                executableName = "G-MemZ-x64.exe";
             } else {
-                filePath += "\\G-MemZ-x32.exe";
+                executableName = "G-MemZ-x32.exe";
             }
         } else {
-            filePath += "/G-MemZ";
+            executableName = "G-MemZ";
+        }
+
+        Path executable = codeDirectory.resolve(executableName);
+        if (!Files.isRegularFile(executable) && codeDirectory.getParent() != null) {
+            // Packaged native resources sit above the Java directory.
+            executable = codeDirectory.getParent().resolve(executableName);
+        }
+        if (!Files.isRegularFile(executable)) {
+            throw new IOException("Unable to locate " + executableName + " near " + codeDirectory);
         }
 
         final String hotelType = connection.getClientType() == HClient.SHOCKWAVE ? "shockwave" : "flash";
-        final ProcessBuilder pb = new ProcessBuilder(filePath, hotelType);
+        final ProcessBuilder pb = new ProcessBuilder(executable.toString(), hotelType);
         final Process p = pb.start();
 
         final HashSet<String> possibleData = new HashSet<>();

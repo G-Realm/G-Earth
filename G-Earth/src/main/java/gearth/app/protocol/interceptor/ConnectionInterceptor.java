@@ -62,7 +62,9 @@ public class ConnectionInterceptor {
         if (!addToHosts()) {
             Platform.runLater(() -> {
                 try {
-                    final Alert alert = new Alert(Alert.AlertType.ERROR, "Unable to modify hosts file, try to run G-Earth as administrator.", ButtonType.OK);
+                    final Alert alert = new Alert(Alert.AlertType.ERROR,
+                            "Unable to update the hosts configuration. On macOS, install or update the G-Earth privileged helper when prompted, then try again.",
+                            ButtonType.OK);
 
                     alert.setHeaderText("Error modifying hosts file");
 
@@ -78,7 +80,14 @@ public class ConnectionInterceptor {
             return;
         }
 
-        launchProxy();
+        try {
+            launchProxy();
+        } catch (IOException | RuntimeException e) {
+            logger.error("Failed to launch proxy listeners", e);
+            removeFromHosts();
+            clearAllProxies();
+            throw e;
+        }
     }
 
     public void stop(boolean forceRemoveFromHosts) {
@@ -91,6 +100,7 @@ public class ConnectionInterceptor {
 
     private void prepare() {
         hStateSetter.setState(HState.PREPARING);
+        potentialProxies = new ArrayList<>();
 
         List<String> willremove = new ArrayList<>();
         int c = 0;
@@ -112,7 +122,9 @@ public class ConnectionInterceptor {
                 }
 
                 int intercept_port = port;
-                String intercept_host = "127.0." + (c / 254) + "." + (1 + c % 254);
+                // Dedicated addresses let proxies reuse the original port.
+                int loopbackIndex = c + 1;
+                String intercept_host = "127.0." + (loopbackIndex / 254) + "." + (1 + loopbackIndex % 254);
                 potentialProxies.add(new HProxy(hClient, input_dom, actual_dom, port, intercept_port, intercept_host));
                 c++;
             }

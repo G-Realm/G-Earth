@@ -63,16 +63,6 @@ public class ProxyProviderFactory {
             }
         }
 
-        if (OSValidator.isMac()) {
-            for (int i = 2; i <= allHosts.size() + 5; i++) {
-                ProcessBuilder allowLocalHost = new ProcessBuilder("ifconfig", "lo0", "alias", ("127.0.0." + i), "up");
-                try {
-                    allowLocalHost.start();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
     public static List<String> getAllHosts() {

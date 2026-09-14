@@ -188,6 +188,40 @@
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>build-macos-privileged-helper</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.directory}"/>
+                                        <exec executable="/usr/bin/xcrun" failonerror="true">
+                                            <arg value="clang"/>
+                                            <arg value="-std=c17"/>
+                                            <arg value="-O2"/>
+                                            <arg value="-Wall"/>
+                                            <arg value="-Wextra"/>
+                                            <arg value="-Werror"/>
+                                            <arg value="-arch"/>
+                                            <arg value="arm64"/>
+                                            <arg value="-arch"/>
+                                            <arg value="x86_64"/>
+                                            <arg value="${project.basedir}/src/main/native/macos/gearth-hosts-helper.c"/>
+                                            <arg value="-o"/>
+                                            <arg value="${project.build.directory}/G-Earth-Hosts-Helper"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
                         <groupId>com.github.UnfamiliarLegacy.JavaPackager</groupId>
                         <artifactId>javapackager</artifactId>
                         <executions>
@@ -202,6 +236,8 @@
                                     <additionalResources>
                                         <additionalResource>${project.basedir}/src/main/resources/build/common/messages.json</additionalResource>
                                         <additionalResource>${project.basedir}/src/main/resources/build/mac/G-MemZ</additionalResource>
+                                        <additionalResource>${project.build.directory}/G-Earth-Hosts-Helper</additionalResource>
+                                        <additionalResource>${project.basedir}/src/main/resources/build/mac/com.gearth.hosts-helper.plist</additionalResource>
                                     </additionalResources>
                                     <vmArgs>
                                         <vmArg>-Dlog.dir=$USER_HOME/Library/Logs/G-Earth</vmArg>
