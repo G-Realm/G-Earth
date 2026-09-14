@@ -93,9 +93,71 @@ jobs:
             -Dos=${TARGET_OS}
         fi
 
+    - name: Package platform artifact
+      shell: bash
+      env:
+        MATRIX_JDK_ARCH: ${{ matrix.jdk-arch }}
+      run: |
+        mkdir -p release
+        ASSET_NAME="G-Earth-${TARGET_OS}-${MATRIX_JDK_ARCH}"
+
+        if [[ "${TARGET_OS}" == "windows" ]]; then
+          7z a -tzip "release/${ASSET_NAME}.zip" "./G-Earth/target/G-Earth/*"
+        elif [[ "${TARGET_OS}" == "mac" ]]; then
+          ditto -c -k --sequesterRsrc --keepParent \
+            "G-Earth/target/G-Earth/G-Earth.app" \
+            "release/${ASSET_NAME}.zip"
+        else
+          tar -C G-Earth/target -czf "${GITHUB_WORKSPACE}/release/${ASSET_NAME}.tar.gz" G-Earth
+        fi
+
     - name: Upload platform artifact
       uses: actions/upload-artifact@v7
       with:
-        name: G-Earth ${{ env.TARGET_OS }}-${{ matrix.jdk-arch }}
-        path: G-Earth/target/G-Earth
+        name: G-Earth-${{ env.TARGET_OS }}-${{ matrix.jdk-arch }}
+        path: release/*
+        if-no-files-found: error
+        compression-level: 0
         retention-days: 30
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+    - name: Download platform artifacts
+      uses: actions/download-artifact@v8
+      with:
+        pattern: G-Earth-*
+        path: release
+        merge-multiple: true
+
+    - name: Attest release assets
+      uses: actions/attest@v4
+      with:
+        subject-path: release/*
+
+    - name: Create draft release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        RELEASE_IS_DRAFT=$(gh release view "${GITHUB_REF_NAME}" --json isDraft --jq .isDraft 2>/dev/null || true)
+
+        if [[ "${RELEASE_IS_DRAFT}" == "true" ]]; then
+          gh release upload "${GITHUB_REF_NAME}" release/* --clobber
+        elif [[ "${RELEASE_IS_DRAFT}" == "false" ]]; then
+          echo "A published release already exists for ${GITHUB_REF_NAME}" >&2
+          exit 1
+        else
+          gh release create "${GITHUB_REF_NAME}" release/* \
+            --draft \
+            --generate-notes \
+            --title "${GITHUB_REF_NAME}" \
+            --verify-tag
+        fi
