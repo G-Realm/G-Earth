@@ -9,11 +9,13 @@ Click here to [download](https://github.com/G-Realm/G-Earth/releases/latest) the
 # Support
 
 |         | Windows | MacOS | Linux |
-|---------|:-------:|:-----:|:-----:|
+|---------|:-------:|:-----:|:------------------:|
 | Flash   |    ✅    |  ✅  |   ❌   |
 | Origins |    ✅    |  ✅  |   ❌   |
 | Unity   |    ✅    |  ❌  |   ❌   |
-| Nitro   |    ✅    |  ️✅  |   ❌   |
+| Nitro   |    ✅    |  ️✅  |   ✅<sup>1</sup>   |
+
+<sub>1: For Linux, Nitro is supported on Gnome and KDE desktop environments. It requires the `certutil` command which is not included on all distros by default, but is on most.</sub>
 
 # Features
 
