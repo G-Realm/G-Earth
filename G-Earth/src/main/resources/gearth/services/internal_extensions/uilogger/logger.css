@@ -37,6 +37,15 @@
     -fx-fill: cyan;
 }
 
+.copy {
+    -fx-fill: #1d9e75;
+    -fx-font-weight: bold;
+}
+
+.copied {
+    -rtfx-background-color: rgba(55, 138, 221, 0.5);
+}
+
 .dark {
     -fx-background-color: #000000;
 }
