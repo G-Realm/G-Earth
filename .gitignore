@@ -31,3 +31,6 @@ Extensions/BlockReplacePackets/.classpath
 *.pem
 *.crt
 *.key
+
+# Local Nitro hotel configuration
+/nitro.json

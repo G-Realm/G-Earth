@@ -1,11 +1,11 @@
 package gearth.app.services.nitro;
 
+import gearth.app.services.nitro.hotels.ConfiguredNitroHotel;
 import gearth.app.services.nitro.hotels.HabboCity;
 import gearth.app.services.nitro.hotels.HabboSK;
 import gearth.app.services.nitro.hotels.Hartico;
 import gearth.app.services.nitro.hotels.HubbeBiz;
 import gearth.app.services.nitro.hotels.HubbeSt;
-import gearth.app.services.nitro.hotels.Leet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +16,9 @@ public class NitroHotelManager {
 
     public NitroHotelManager() {
         this.hotels = new ArrayList<>();
+        this.hotels.addAll(ConfiguredNitroHotel.load());
         this.hotels.add(new HabboCity());
         this.hotels.add(new Hartico());
-        this.hotels.add(new Leet());
         this.hotels.add(new HabboSK());
         this.hotels.add(new HubbeSt());
         this.hotels.add(new HubbeBiz());

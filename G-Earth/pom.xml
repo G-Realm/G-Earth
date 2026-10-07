@@ -10,7 +10,8 @@
 
     <properties>
         <logback.version>1.5.32</logback.version>
-        <bouncycastle.version>1.84</bouncycastle.version>
+        <bouncycastle.version>1.85</bouncycastle.version>
+        <impersonator.version>1.10.2</impersonator.version>
         <apache.http>5.6.1</apache.http>
         <javapackager.version>e0949107352e17f6cd20463e1aca11e519c6ce06</javapackager.version>
         <!-- Encoding. -->
@@ -317,7 +318,7 @@
         <dependency>
             <groupId>com.github.monkeywie</groupId>
             <artifactId>proxyee</artifactId>
-            <version>1.7.6</version>
+            <version>1.8.0-gearth</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk18on -->
         <dependency>
@@ -331,11 +332,10 @@
             <artifactId>bcpkix-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.bouncycastle/bctls-jdk18on -->
         <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bctls-jdk18on</artifactId>
-            <version>${bouncycastle.version}</version>
+            <groupId>com.github.zhkl0228</groupId>
+            <artifactId>impersonator-bctls</artifactId>
+            <version>${impersonator.version}</version>
         </dependency>
         <dependency>
             <groupId>G-Earth</groupId>

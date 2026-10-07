@@ -5,6 +5,8 @@ import com.github.monkeywie.proxyee.proxy.ProxyConfig;
 import com.github.monkeywie.proxyee.proxy.ProxyType;
 import com.github.monkeywie.proxyee.server.HttpProxyServer;
 import com.github.monkeywie.proxyee.server.HttpProxyServerConfig;
+import com.github.zhkl0228.impersonator.ImpersonatorApi;
+import com.github.zhkl0228.impersonator.ImpersonatorFactory;
 import gearth.app.misc.ConfirmationDialog;
 import gearth.app.protocol.connection.proxy.ProxyProviderFactory;
 import gearth.app.protocol.connection.proxy.SocksConfiguration;
@@ -14,28 +16,28 @@ import gearth.app.protocol.connection.proxy.nitro.os.NitroOsFunctionsFactory;
 import gearth.app.ui.titlebar.TitleBarAlert;
 import gearth.app.ui.translations.LanguageBundle;
 import io.netty.handler.codec.http.websocketx.WebSocketDecoderConfig;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.netty.handler.ssl.ApplicationProtocolNames;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.IdentityCipherSuiteFilter;
+import io.netty.handler.ssl.JdkSslContext;
+import io.netty.handler.ssl.SslContext;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.ServerSocket;
-import java.security.Security;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HttpProxyManager {
@@ -185,15 +187,10 @@ public class HttpProxyManager {
         // Hack to swap the SSL context.
         // Need to set this after proxyServer is started because starting it will override the configured SSL context.
         try {
-            Security.addProvider(new BouncyCastleProvider());
-
-            config.setClientSslCtx(SslContextBuilder
-                    .forClient()
-                    .sslContextProvider(new BouncyCastleJsseProvider())
-                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                    .protocols("TLSv1.3", "TLSv1.2")
-                    .ciphers(new HashSet<>(Arrays.asList(NitroConstants.CIPHER_SUITES)))
-                    .build());
+            config.setClientSslCtx(createClientSslContext(
+                    ApplicationProtocolNames.HTTP_2, ApplicationProtocolNames.HTTP_1_1));
+            config.setClientSslCtxHttp1(createClientSslContext(
+                    ApplicationProtocolNames.HTTP_1_1));
         } catch (SSLException e) {
             proxyServer.close();
 
@@ -209,6 +206,31 @@ public class HttpProxyManager {
         }
 
         return true;
+    }
+
+    private static SslContext createClientSslContext(String... applicationProtocols) throws SSLException {
+        try {
+            final ImpersonatorApi impersonator = ImpersonatorFactory.macChrome();
+
+            impersonator.setEchConfigProvider(null);
+            final SSLContext sslContext = impersonator.newTrustAnyCertificateSSLContext();
+
+            return new JdkSslContext(
+                    sslContext,
+                    true,
+                    null,
+                    IdentityCipherSuiteFilter.INSTANCE,
+                    new ApplicationProtocolConfig(
+                            ApplicationProtocolConfig.Protocol.ALPN,
+                            ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                            ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+                            applicationProtocols),
+                    ClientAuth.NONE,
+                    null,
+                    false);
+        } catch (RuntimeException e) {
+            throw new SSLException("Failed to initialize the Chrome TLS impersonator", e);
+        }
     }
 
     public void pause() {

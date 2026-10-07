@@ -5,6 +5,7 @@ import com.github.monkeywie.proxyee.intercept.HttpProxyInterceptPipeline;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
@@ -33,6 +34,13 @@ public class NitroWebsocketProxy extends HttpProxyIntercept {
                 clientChannel.writeAndFlush(new PongWebSocketFrame(ping.content().retain()));
                 return;
             }
+            if (frame instanceof CloseWebSocketFrame) {
+                proxyChannel.writeAndFlush(frame.retain());
+                return;
+            }
+            if (frame instanceof PongWebSocketFrame) {
+                return;
+            }
 
             final byte[] data = getBinaryData(frame);
             if (data != null) {
@@ -48,6 +56,13 @@ public class NitroWebsocketProxy extends HttpProxyIntercept {
         try {
             if (frame instanceof PingWebSocketFrame ping) {
                 proxyChannel.writeAndFlush(new PongWebSocketFrame(ping.content().retain()));
+                return;
+            }
+            if (frame instanceof CloseWebSocketFrame) {
+                clientChannel.writeAndFlush(frame.retain());
+                return;
+            }
+            if (frame instanceof PongWebSocketFrame) {
                 return;
             }
 
