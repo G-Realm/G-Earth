@@ -156,7 +156,7 @@ public class LinuxHabboClient implements HabboClient {
                 if (snippet.getData().length >= 1024 && snippet.getData().length <= 1024+2*offset) {
                     for (int i = 0; i < (snippet.getData().length - ((256 - 1) * offset)); i+=offset) {
                         byte[] wannabeRC4data = Arrays.copyOfRange(snippet.getData(), i, 1024 + i);
-                        byte[] data = new byte[256]; // dis is the friggin key
+                        byte[] data = new byte[1024]; // 256 big-endian u32 entries, like G-MemZ
 
                         boolean isvalid = true;
                         for (int j = 0; j < 1024; j++) {
@@ -165,7 +165,7 @@ public class LinuxHabboClient implements HabboClient {
                                 break;
                             }
                             if (j % 4 == 0) {
-                                data[j/4] = wannabeRC4data[j];
+                                data[j + 3] = wannabeRC4data[j];
                             }
                         }
                         if (isvalid) {
