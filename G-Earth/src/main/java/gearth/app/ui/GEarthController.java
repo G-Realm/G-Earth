@@ -52,6 +52,8 @@ public class GEarthController {
     }
 
     public void initialize() {
+        GEarthTrayIcon.setHConnection(hConnection);
+
         tabs = new ArrayList<>();
         // must be ordered correctly
         tabs.add(connectionController);
