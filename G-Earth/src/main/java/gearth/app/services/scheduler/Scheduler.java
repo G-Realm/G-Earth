@@ -1,6 +1,7 @@
 package gearth.app.services.scheduler;
 
 import gearth.app.protocol.HConnection;
+import gearth.app.protocol.TrafficListener;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import gearth.protocol.HPacketFormat;
@@ -49,6 +50,10 @@ public class Scheduler<T extends ScheduleItem> {
                                 final HMessage.Direction direction = item.getDestinationProperty().get();
                                 final HPacketFormat format = HPacketFormat.getFormat(clientType, direction);
                                 final HPacket hPacket = format.createPacket(item.getPacketAsStringProperty().get());
+
+                                final HMessage message = new HMessage(hPacket, direction, connection.getCurrentIndex());
+                                message.setExtensionName("Scheduler");
+                                connection.notifyTrafficListeners(TrafficListener.AFTER_MODIFICATION, message);
 
                                 if (direction == HMessage.Direction.TOSERVER) {
                                     connection.sendToServer(hPacket);
