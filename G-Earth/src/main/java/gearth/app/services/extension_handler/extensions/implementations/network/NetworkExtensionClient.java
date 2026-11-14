@@ -1,5 +1,6 @@
 package gearth.app.services.extension_handler.extensions.implementations.network;
 
+import gearth.app.misc.ForegroundWindowAuthorizer;
 import gearth.misc.HostInfo;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
@@ -125,6 +126,9 @@ public final class NetworkExtensionClient extends GEarthExtension {
 
     @Override
     public void doubleclick() {
+        // The extension shows its own window from its own JVM, and Windows only lets the
+        // foreground process raise a window, so hand out that permission before asking it to.
+        ForegroundWindowAuthorizer.allowAnyProcess();
         channel.writeAndFlush(new Outgoing.OnDoubleClick());
     }
 
