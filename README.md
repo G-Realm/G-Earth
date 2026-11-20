@@ -10,10 +10,12 @@ Click here to [download](https://github.com/G-Realm/G-Earth/releases/latest) the
 
 |         | Windows | MacOS | Linux |
 |---------|:-------:|:-----:|:-----:|
-| Flash   |    ✅    |  ✅  |   ❌   |
+| Flash   |    ✅    |  ✅  |  ✅<sup>1</sup>  |
 | Origins |    ✅    |  ✅  |   ❌   |
 | Unity   |    ✅    |  ❌  |   ❌   |
 | Nitro   |    ✅    |  ️✅  |   ❌   |
+
+<sub>1: G-Earth needs write access to `/etc/hosts` and permission to read the client's memory (run as root, or set `kernel.yama.ptrace_scope=0`)</sub>
 
 # Features
 
