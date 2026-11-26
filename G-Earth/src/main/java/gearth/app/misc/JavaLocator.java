@@ -31,9 +31,23 @@ import java.util.stream.Stream;
  * G-Earth was updated to a newer Java version so users need to
  * install Java 8 separately for older extensions that require JavaFX.
  * Any Java 8 update is accepted, as long as the installation actually
- * ships JavaFX, which is not guaranteed for every vendor or update.<br>
+ * ships JavaFX, which is not guaranteed for every vendor or update.
+ * The highest available build number is preferred.<br>
  * <br>
- * The highest available build number is preferred.
+ * Oracle JDK/JRE 8 JavaFX availability:
+ * <ul>
+ *     <li>8u441 and earlier: bundled (no longer receiving security patches).</li>
+ *     <li>8u451 - 8u481: not bundled.</li>
+ *     <li>8u491 through the March 2028 builds: bundled again (JDK-8371301).</li>
+ * </ul>
+ * Latest build known to bundle JavaFX at the time of writing: 1.8.0_513.<br>
+ * <br>
+ * References:
+ * <ul>
+ *     <li><a href="https://www.oracle.com/java/technologies/javase/8all-relnotes.html">Consolidated JDK 8 release notes</a></li>
+ *     <li><a href="https://www.oracle.com/java/technologies/javase/8u491-relnotes.html#JDK-8371301">8u491 release notes (JavaFX re-included)</a></li>
+ *     <li><a href="https://www.oracle.com/javase/javafx/">Oracle JavaFX</a></li>
+ * </ul>
  */
 public class JavaLocator {
 
