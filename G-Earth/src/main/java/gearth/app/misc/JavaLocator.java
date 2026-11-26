@@ -26,20 +26,35 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Utility class to find Java 8 installations with build 441 or lower.<br>
+ * Utility class to find Java 8 installations that bundle JavaFX.<br>
  * <br>
- * Java 8u441 is the last Java 8 version that has JavaFX.
  * G-Earth was updated to a newer Java version so users need to
- * install Java 8 separately for older extensions that require JavaFX.<br>
+ * install Java 8 separately for older extensions that require JavaFX.
+ * Any Java 8 update is accepted, as long as the installation actually
+ * ships JavaFX, which is not guaranteed for every vendor or update.
+ * The highest available build number is preferred.<br>
  * <br>
- * <a href="https://www.oracle.com/java/technologies/javase/8u441-relnotes.html">8u441 release notes</a>
+ * Oracle JDK/JRE 8 JavaFX availability:
+ * <ul>
+ *     <li>8u441 and earlier: bundled (no longer receiving security patches).</li>
+ *     <li>8u451 - 8u481: not bundled.</li>
+ *     <li>8u491 through the March 2028 builds: bundled again (JDK-8371301).</li>
+ * </ul>
+ * Latest build known to bundle JavaFX at the time of writing: 1.8.0_513.<br>
+ * <br>
+ * References:
+ * <ul>
+ *     <li><a href="https://www.oracle.com/java/technologies/javase/8all-relnotes.html">Consolidated JDK 8 release notes</a></li>
+ *     <li><a href="https://www.oracle.com/java/technologies/javase/8u491-relnotes.html#JDK-8371301">8u491 release notes (JavaFX re-included)</a></li>
+ *     <li><a href="https://www.oracle.com/javase/javafx/">Oracle JavaFX</a></li>
+ * </ul>
  */
 public class JavaLocator {
 
     private final static Logger LOG = LoggerFactory.getLogger(JavaLocator.class);
 
     private final static String JAVA_MAJOR = "1.8.0";
-    private final static int JAVA_BUILD_MAX = 441;
+    private final static String JAVAFX_JAR = "jfxrt.jar";
 
     private static boolean initialized;
     private static JavaInstall javaInstall;
@@ -77,12 +92,20 @@ public class JavaLocator {
                 .filter(install -> install.version().contains("_"))
                 .filter(install -> {
                     try {
-                        final int buildNumber = Integer.parseInt(install.version().split("_")[1]);
-                        return buildNumber <= JAVA_BUILD_MAX;
+                        Integer.parseInt(install.version().split("_")[1]);
+                        return true;
                     } catch (NumberFormatException e) {
                         LOG.warn("Java version {} does not contain a valid build number", install.version());
                         return false;
                     }
+                })
+                .filter(install -> {
+                    if (hasJavaFx(install.path())) {
+                        return true;
+                    }
+
+                    LOG.warn("Java installation {} at {} does not bundle JavaFX, skipping", install.version(), install.path());
+                    return false;
                 })
                 // jre before jdk.
                 .sorted((o1, o2) -> {
@@ -113,6 +136,16 @@ public class JavaLocator {
         }
 
         return buildMap.get(maxBuild.get());
+    }
+
+    /**
+     * Checks whether a Java installation bundles JavaFX 8.
+     * Supports both the JRE layout ({@code lib/ext}) and the JDK layout
+     * ({@code jre/lib/ext}).
+     */
+    private static boolean hasJavaFx(final Path javaHome) {
+        return Files.exists(javaHome.resolve("jre").resolve("lib").resolve("ext").resolve(JAVAFX_JAR))
+                || Files.exists(javaHome.resolve("lib").resolve("ext").resolve(JAVAFX_JAR));
     }
 
     private static List<JavaInstall> findOnWindows() throws IOException {
